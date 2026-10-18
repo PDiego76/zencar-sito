@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="ZenCar calcola il planning della tua carrozzeria giorno per giorno: chi lavora su quale vettura, in quale reparto e quando sarà pronta.">
+<link rel="icon" href="zencar.ico">
+<title>ZenCar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* Layout: a planning board as the hero; the page then follows a car through the shop, left-aligned on a 12-col grid. */
+:root{
+  --bg:#F4F5F8; --surface:#FFFFFF; --surface-2:#ECEEF3; --ink:#0B0D12; --muted:#5A6070; --line:#DADDE5;
+  --brand:#4C5BFF; --brand-ink:#FFFFFF; --brand-soft:#E6E8FF;
+  --band:#0B0D12; --band-ink:#F1F2F6; --band-muted:#9DA3B4; --band-line:#262A35;
+  --c-sr:#2F9E5E; --c-lat:#7E4FB8; --c-pv:#E8901C; --c-luc:#E0579B; --c-dry:#8FB4D6;
+  --ok:#1F8A52; --warn:#B47A00; --bad:#C63C2C;
+  --plate:#FFFFFF; --plate-ink:#0B0D12; --plate-eu:#1F3FB6;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1016; --surface:#161922; --surface-2:#1D212C; --ink:#EEF0F5; --muted:#9AA0B1; --line:#2A2F3B;
+    --brand:#6F7BFF; --brand-ink:#0B0D12; --brand-soft:#1E2245;
+    --band:#05060A; --band-ink:#EEF0F5; --band-muted:#8D93A4; --band-line:#22262F;
+    --c-sr:#45B677; --c-lat:#9B72D6; --c-pv:#F0A23A; --c-luc:#EC74AE; --c-dry:#7FA2C4;
+    --ok:#3DBA78; --warn:#E0A63A; --bad:#EE6A58;
+    --plate:#F4F5F8; --plate-ink:#0B0D12; --plate-eu:#2E4FCB;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1016; --surface:#161922; --surface-2:#1D212C; --ink:#EEF0F5; --muted:#9AA0B1; --line:#2A2F3B;
+  --brand:#6F7BFF; --brand-ink:#0B0D12; --brand-soft:#1E2245;
+  --band:#05060A; --band-ink:#EEF0F5; --band-muted:#8D93A4; --band-line:#22262F;
+  --c-sr:#45B677; --c-lat:#9B72D6; --c-pv:#F0A23A; --c-luc:#EC74AE; --c-dry:#7FA2C4;
+  --ok:#3DBA78; --warn:#E0A63A; --bad:#EE6A58;
+  --plate:#F4F5F8; --plate-ink:#0B0D12; --plate-eu:#2E4FCB;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 var(--f-body);-webkit-font-smoothing:antialiased}
+:focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:4px}
+a{color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;line-height:1;margin:0;text-wrap:balance;letter-spacing:-.005em}
+h2{font-size:clamp(34px,4.6vw,54px);text-transform:uppercase}
+h3{font-size:22px;font-weight:600;letter-spacing:.005em}
+p{margin:0}
+.eyebrow{font:600 13px/1 var(--f-body);letter-spacing:.12em;text-transform:uppercase;color:var(--brand)}
+.lead{font-size:18px;color:var(--muted);max-width:60ch}
+.num{font-variant-numeric:tabular-nums}
+
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 20px;border-radius:999px;font:600 15px/1 var(--f-body);text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .15s ease,background .15s ease}
+.btn:hover{transform:translateY(-1px)}
+.btn-pri{background:var(--brand);color:var(--brand-ink)}
+.btn-ghost{border-color:var(--line);color:var(--ink);background:transparent}
+.btn-ghost:hover{background:var(--surface-2)}
+.band .btn-ghost{border-color:var(--band-line);color:var(--band-ink)}
+.band .btn-ghost:hover{background:var(--band-line)}
+
+/* nav */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;gap:28px;padding-block:14px}
+.logo{display:flex;align-items:center;color:var(--ink);text-decoration:none}
+.logo svg{height:30px;width:auto}
+.nav ul{display:flex;gap:24px;list-style:none;margin:0 0 0 auto;padding:0;font-size:15px;font-weight:500}
+.nav ul a{text-decoration:none;color:var(--muted)}
+.nav ul a:hover{color:var(--ink)}
+.nav .btn{min-height:40px;padding:0 16px;font-size:14px}
+@media (max-width:860px){.nav ul{display:none}.nav .btn{margin-left:auto}}
+
+/* hero */
+.hero{padding-block:64px 72px}
+.hero .wrap{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:56px;align-items:center}
+.hero h1{font-size:clamp(48px,6.6vw,88px);text-transform:uppercase;font-weight:800;line-height:.92}
+.hero h1 em{font-style:normal;color:var(--brand)}
+.hero .lead{margin-top:22px}
+.hero .ctas{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.hero .facts{display:flex;gap:28px;flex-wrap:wrap;margin-top:36px;padding-top:22px;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
+.hero .facts b{display:block;font:700 26px/1.1 var(--f-display);color:var(--ink)}
+@media (max-width:980px){.hero .wrap{grid-template-columns:minmax(0,1fr);gap:40px}}
+
+/* planning board mock */
+.board{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 30px 60px -30px color-mix(in srgb,var(--ink) 35%,transparent);overflow:hidden;position:relative}
+.board-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);font-size:13px}
+.board-top .title{font:700 17px/1 var(--f-display);text-transform:uppercase;letter-spacing:.02em}
+.board-top .week{margin-left:auto;color:var(--muted)}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-bottom:1px solid var(--line)}
+.kpis div{padding:10px 16px;border-right:1px solid var(--line);font-size:12px;color:var(--muted)}
+.kpis div:last-child{border-right:0}
+.kpis b{display:block;font:700 22px/1.1 var(--f-display);color:var(--ink)}
+.kpis .bad b{color:var(--bad)}
+.gantt-scroll{overflow-x:auto}
+.gantt{min-width:600px;display:grid;grid-template-columns:150px repeat(10,minmax(0,1fr));font-size:12px}
+.gantt .h{padding:8px 6px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--line);grid-column:span 2;text-align:center}
+.gantt .h.today{color:var(--brand)}
+.gantt .h0{grid-column:1;border-bottom:1px solid var(--line)}
+.row{display:contents}
+.row .car{grid-column:1;padding:10px 12px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:4px;justify-content:center}
+.row .car small{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lane{grid-column:2 / -1;position:relative;display:grid;grid-template-columns:repeat(10,minmax(0,1fr));align-items:center;border-bottom:1px solid var(--line);background:repeating-linear-gradient(90deg,transparent 0 calc(20% - 1px),var(--line) calc(20% - 1px) 20%);padding-inline:2px}
+.seg{height:22px;margin:0 2px;border-radius:5px;background:var(--c);color:#fff;font:600 10.5px/22px var(--f-body);padding-left:6px;white-space:nowrap;overflow:hidden;transform-origin:left;animation:grow .6s cubic-bezier(.2,.7,.2,1) both}
+.seg.dry{background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c-dry) 55%,transparent) 0 4px,transparent 4px 8px);border:1px dashed var(--c-dry);color:var(--muted);height:16px}
+.sr{--c:var(--c-sr)} .lat{--c:var(--c-lat)} .pv{--c:var(--c-pv)} .luc{--c:var(--c-luc)}
+.flag{position:absolute;top:50%;transform:translateY(-50%);font:700 10px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:4px 6px;border-radius:4px;white-space:nowrap}
+.flag.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 14%,transparent)}
+.flag.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 16%,transparent)}
+@keyframes grow{from{transform:scaleX(.15);opacity:.4}to{transform:none;opacity:1}}
+.board-pop{position:absolute;right:16px;bottom:16px;width:min(300px,calc(100% - 32px));background:var(--band);color:var(--band-ink);border-radius:12px;padding:14px 16px;font-size:13px;box-shadow:0 18px 40px -16px rgba(0,0,0,.5)}
+.board-pop .t{font:700 15px/1.1 var(--f-display);text-transform:uppercase;letter-spacing:.03em;display:flex;align-items:center;gap:8px}
+.board-pop dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0 0}
+.board-pop dt{color:var(--band-muted)}
+.board-pop dd{margin:0;font-weight:600;text-align:right}
+.board-pop .note{margin-top:10px;padding-top:10px;border-top:1px solid var(--band-line);color:var(--band-muted)}
+.board-pop .note b{color:var(--band-ink)}
+.board-legend{display:flex;gap:14px;flex-wrap:wrap;padding:10px 16px 76px;font-size:12px;color:var(--muted)}
+.board-legend span{display:inline-flex;align-items:center;gap:6px}
+.board-legend i{width:10px;height:10px;border-radius:3px;background:var(--c)}
+@media (max-width:640px){.board-pop{position:static;width:auto;margin:0 12px 12px}.board-legend{padding-bottom:12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.kpis div:nth-child(2){border-right:0}.kpis div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+
+/* plate */
+.plate{display:inline-flex;align-items:stretch;height:20px;border:1.5px solid var(--plate-ink);border-radius:4px;overflow:hidden;background:var(--plate);color:var(--plate-ink);font:700 14px/1 var(--f-display);letter-spacing:.06em;width:max-content}
+.plate::before{content:"I";display:flex;align-items:flex-end;justify-content:center;width:11px;padding-bottom:2px;background:var(--plate-eu);color:#fff;font-size:8px;letter-spacing:0}
+.plate span{display:flex;align-items:center;padding:0 6px}
+.plate.lg{height:30px;font-size:21px}.plate.lg::before{width:16px;font-size:10px}.plate.lg span{padding:0 9px}
+
+/* phases strip */
+section{padding-block:96px}
+.sec-head{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:56px;align-items:end;margin-bottom:48px}
+.sec-head .lead{justify-self:start}
+.sec-head > div{display:flex;flex-direction:column;gap:16px}
+@media (max-width:900px){.sec-head{grid-template-columns:minmax(0,1fr);gap:18px}}
+.phases{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;border-top:1px solid var(--line)}
+.phase{padding:22px 20px 26px 0;border-right:1px solid var(--line);position:relative;display:flex;flex-direction:column;gap:10px}
+.phase + .phase{padding-left:20px}
+.phase:last-child{border-right:0}
+.phase::before{content:"";position:absolute;left:0;right:0;top:-1px;height:4px;background:var(--c)}
+.phase + .phase::before{left:0}
+.phase .n{font:700 14px/1 var(--f-display);color:var(--c);letter-spacing:.08em}
+.phase h3{font-size:28px;text-transform:uppercase}
+.phase p{font-size:14.5px;color:var(--muted)}
+.phase .dep{font-size:12.5px;color:var(--muted);margin-top:auto;padding-top:8px}
+.dry-note{display:flex;gap:12px;align-items:center;margin-top:22px;font-size:14px;color:var(--muted)}
+.dry-note i{flex:none;width:44px;height:14px;border:1px dashed var(--c-dry);border-radius:4px;background:repeating-linear-gradient(135deg,color-mix(in srgb,var(--c-dry) 55%,transparent) 0 4px,transparent 4px 8px)}
+@media (max-width:900px){.phases{grid-template-columns:minmax(0,1fr)}.phase,.phase + .phase{border-right:0;border-bottom:1px solid var(--line);padding:20px 0 20px 18px}.phase::before,.phase + .phase::before{top:0;bottom:0;left:0;right:auto;width:4px;height:auto}}
+
+/* import / hours conversion */
+.band{background:var(--band);color:var(--band-ink)}
+.band .lead{color:var(--band-muted)}
+.band .eyebrow{color:color-mix(in srgb,var(--brand) 70%,#fff)}
+.convert{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:56px;align-items:start}
+.convert .steps{list-style:none;margin:32px 0 0;padding:0;display:flex;flex-direction:column;gap:22px;counter-reset:s}
+.convert .steps li{display:grid;grid-template-columns:36px minmax(0,1fr);gap:14px;counter-increment:s}
+.convert .steps li::before{content:counter(s);display:grid;place-items:center;width:36px;height:36px;border-radius:50%;border:1px solid var(--band-line);font:700 17px/1 var(--f-display);color:var(--band-ink)}
+.convert .steps b{display:block;font-size:16px;margin-bottom:2px}
+.convert .steps span{color:var(--band-muted);font-size:15px}
+.sheet{background:var(--surface);color:var(--ink);border-radius:14px;overflow:hidden;font-size:14px}
+.sheet-head{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:16px 18px;border-bottom:1px solid var(--line)}
+.sheet-head .meta{font-size:13px;color:var(--muted)}
+.sheet-head .badge{margin-left:auto;font:600 12px/1 var(--f-body);color:var(--brand);background:var(--brand-soft);padding:6px 10px;border-radius:999px}
+.table-scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:540px}
+th,td{padding:11px 18px;text-align:left;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th{font:600 11.5px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+td.r,th.r{text-align:right}
+.to{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:3px 8px;border-radius:6px;background:color-mix(in srgb,var(--c) 14%,transparent);color:color-mix(in srgb,var(--c) 80%,var(--ink));white-space:nowrap}
+.chip::before{content:"";width:7px;height:7px;border-radius:2px;background:var(--c)}
+.sheet-foot{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line)}
+.sheet-foot div{background:var(--surface);padding:12px 14px;font-size:12px;color:var(--muted)}
+.sheet-foot b{display:block;font:700 22px/1.1 var(--f-display);color:var(--c)}
+.sheet-note{padding:12px 18px;font-size:12.5px;color:var(--muted);background:var(--surface-2)}
+@media (max-width:980px){.convert{grid-template-columns:minmax(0,1fr);gap:40px}}
+@media (max-width:560px){.sheet-foot{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* plan decision */
+.decide{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:56px;align-items:center}
+.days{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.day{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:6px;font-size:13px;cursor:pointer;text-align:left;font-family:inherit;color:inherit}
+.day:hover{border-color:var(--brand)}
+.day[aria-pressed="true"]{border-color:var(--brand);box-shadow:0 0 0 2px var(--brand)}
+.day .d{font:700 20px/1 var(--f-display);text-transform:uppercase}
+.day .e{color:var(--muted);font-size:12px}
+.day .e b{display:block;color:var(--ink);font-size:14px}
+.impact{margin-top:16px;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:16px 18px;display:flex;flex-direction:column;gap:10px;min-height:150px}
+.impact .row2{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.impact .big{font:700 30px/1 var(--f-display);text-transform:uppercase}
+.impact ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:14px}
+.impact li{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.impact li .late{color:var(--bad);font-weight:600}
+.impact li .fine{color:var(--muted)}
+.state{font:700 11px/1 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:5px 8px;border-radius:5px}
+.state.ok{color:var(--ok);background:color-mix(in srgb,var(--ok) 13%,transparent)}
+.state.warn{color:var(--warn);background:color-mix(in srgb,var(--warn) 15%,transparent)}
+.state.bad{color:var(--bad);background:color-mix(in srgb,var(--bad) 13%,transparent)}
+@media (max-width:980px){.decide{grid-template-columns:minmax(0,1fr);gap:36px}}
+@media (max-width:520px){.days{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+/* features */
+.features{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.feat{background:var(--surface);padding:28px 26px 30px;display:flex;flex-direction:column;gap:10px}
+.feat .ic{width:40px;height:40px;border-radius:10px;background:var(--brand-soft);color:var(--brand);display:grid;place-items:center;margin-bottom:6px}
+.feat .ic svg{width:22px;height:22px}
+.feat p{color:var(--muted);font-size:15px}
+.feat .ex{margin-top:auto;padding-top:10px;font-size:13px;color:var(--ink);font-weight:500}
+@media (max-width:900px){.features{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:600px){.features{grid-template-columns:minmax(0,1fr)}}
+
+/* roles */
+.roles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.role{border-top:2px solid var(--ink);padding-top:16px;display:flex;flex-direction:column;gap:8px}
+.role h3{font-size:26px;text-transform:uppercase}
+.role p{font-size:14.5px;color:var(--muted)}
+.role .who{font-size:12.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--brand)}
+@media (max-width:900px){.roles{grid-template-columns:repeat(2,minmax(0,1fr));gap:28px 20px}}
+@media (max-width:500px){.roles{grid-template-columns:minmax(0,1fr)}}
+
+/* trust */
+.trust{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:32px;margin-top:56px;padding-top:32px;border-top:1px solid var(--line)}
+.trust div{display:flex;flex-direction:column;gap:6px}
+.trust b{font:700 22px/1.1 var(--f-display);text-transform:uppercase}
+.trust span{font-size:14.5px;color:var(--muted)}
+@media (max-width:760px){.trust{grid-template-columns:minmax(0,1fr);gap:20px}}
+
+/* origin */
+.origin{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:56px;align-items:center}
+.origin blockquote{margin:0;font:600 clamp(28px,3.4vw,42px)/1.12 var(--f-display);text-wrap:balance}
+.origin blockquote::before{content:"“";display:block;font-size:80px;line-height:.6;color:var(--brand);margin-bottom:10px}
+.origin .side{display:flex;flex-direction:column;gap:14px;color:var(--muted);font-size:15.5px}
+@media (max-width:900px){.origin{grid-template-columns:minmax(0,1fr);gap:28px}}
+
+/* CTA */
+.cta .wrap{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,6fr);gap:56px;align-items:center}
+.cta h2{font-size:clamp(40px,5.4vw,68px)}
+.cta form{background:var(--surface);color:var(--ink);border-radius:16px;padding:26px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.cta label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600}
+.cta label.full{grid-column:1 / -1}
+.cta input,.cta select,.cta textarea{font:inherit;font-weight:400;font-size:15px;min-height:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.cta form .btn{grid-column:1 / -1;justify-content:center;min-height:50px}
+.cta textarea{min-height:96px;padding:10px 12px;resize:vertical;line-height:1.45}
+.cta [aria-invalid="true"]{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.tipo{grid-column:1 / -1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;padding:4px;border-radius:999px;background:var(--surface-2);border:0;margin:0;position:relative}
+.tipo legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.tipo input{position:absolute;opacity:0;pointer-events:none}
+.tipo label{flex-direction:row;justify-content:center;align-items:center;text-align:center;min-height:40px;border-radius:999px;font-size:14px;cursor:pointer;color:var(--muted)}
+.tipo input:checked + label{background:var(--surface);color:var(--ink);box-shadow:0 1px 3px color-mix(in srgb,var(--ink) 18%,transparent)}
+.tipo input:focus-visible + label{outline:2px solid var(--brand);outline-offset:2px}
+.cta label.consenso{grid-column:1 / -1;flex-direction:row;align-items:flex-start;gap:10px;font-weight:400;font-size:13px;color:var(--muted);cursor:pointer}
+.cta label.consenso input{min-height:0;width:18px;height:18px;margin:1px 0 0;padding:0;flex:none;accent-color:var(--brand)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.cta form{position:relative}
+.cta form .btn[disabled]{opacity:.6;cursor:progress;transform:none}
+.cta .msg{grid-column:1 / -1;font-size:14px;font-weight:600;margin:0}
+.cta .msg.ok{color:var(--ok)}
+.cta .msg.err{color:var(--bad)}
+.cta .alt{margin-top:22px;font-size:15px;color:var(--band-muted)}
+.cta .alt button{background:none;border:0;padding:0;font:inherit;color:var(--band-ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.cta form.inviato > :not(.msg){display:none}
+.cta .fine-print{grid-column:1 / -1;font-size:12.5px;color:var(--muted)}
+@media (max-width:900px){.cta .wrap{grid-template-columns:minmax(0,1fr);gap:36px}}
+@media (max-width:480px){.cta form{grid-template-columns:minmax(0,1fr)}}
+
+footer{padding-block:36px 48px;border-top:1px solid var(--band-line);background:var(--band);color:var(--band-muted);font-size:13.5px}
+footer .wrap{display:flex;gap:20px 32px;flex-wrap:wrap;align-items:center}
+footer .logo{color:var(--band-ink)}
+footer .logo svg{height:26px}
+footer nav{display:flex;gap:20px;flex-wrap:wrap;margin-left:auto}
+footer a{text-decoration:none}
+footer a:hover{color:var(--band-ink)}
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="zc-logo" viewBox="0 0 407 110">
+    <g transform="scale(0.9166666666666666)"><rect x="10" y="10" width="46" height="46" rx="13" fill="var(--brand)"/><rect x="64" y="10" width="46" height="46" rx="13" fill="var(--brand)"/><rect x="10" y="64" width="46" height="46" rx="13" fill="var(--brand)"/><circle cx="87" cy="87" r="21" fill="none" stroke="currentColor" stroke-width="8"/><circle cx="87" cy="87" r="5" fill="currentColor"/></g>
+    <path d="M136.268 84.82V75.41199999999999L165.92000000000002 34.67199999999999H137.528V25.179999999999993H179.192V34.58799999999999L149.288 75.32799999999999H180.2V84.82Z M203.552 85.82799999999999Q196.832 85.82799999999999 191.876 82.92999999999999Q186.92000000000002 80.032 184.23200000000003 74.74Q181.544 69.448 181.544 62.391999999999996Q181.544 55.33599999999999 184.23200000000003 50.04399999999999Q186.92000000000002 44.75199999999999 191.834 41.853999999999985Q196.748 38.95599999999999 203.3 38.95599999999999Q209.684 38.95599999999999 214.47199999999998 41.81199999999999Q219.26 44.66799999999999 221.906 50.04399999999999Q224.55200000000002 55.41999999999999 224.55200000000002 62.97999999999999V65.416H192.716Q192.968 71.29599999999999 195.90800000000002 74.27799999999999Q198.848 77.25999999999999 203.636 77.25999999999999Q210.94400000000002 77.25999999999999 212.96 71.044L223.964 71.716Q222.116 78.26799999999999 216.698 82.04799999999999Q211.28 85.82799999999999 203.552 85.82799999999999ZM192.716 58.19199999999999H213.464Q213.044 52.73199999999999 210.31400000000002 50.08599999999999Q207.584 47.43999999999999 203.3 47.43999999999999Q198.93200000000002 47.43999999999999 196.16000000000003 50.21199999999999Q193.388 52.983999999999995 192.716 58.19199999999999Z M229.59199999999998 84.82V39.96399999999999H239.33599999999998L239.588 47.60799999999999Q241.43599999999998 42.98799999999999 245.00599999999997 40.971999999999994Q248.576 38.95599999999999 253.028 38.95599999999999Q260.42 38.95599999999999 264.368 43.70199999999999Q268.316 48.44799999999999 268.316 56.007999999999996V84.82H257.56399999999996V59.45199999999999Q257.56399999999996 53.739999999999995 255.84199999999998 50.715999999999994Q254.12 47.69199999999999 249.75199999999998 47.69199999999999Q245.384 47.69199999999999 242.86399999999998 50.715999999999994Q240.344 53.739999999999995 240.344 59.45199999999999V84.82Z M301.24399999999997 86.16399999999999Q293.096 86.16399999999999 286.88 82.42599999999999Q280.664 78.68799999999999 277.13599999999997 71.75799999999998Q273.608 64.82799999999999 273.608 55.08399999999999Q273.608 45.50799999999999 277.052 38.493999999999986Q280.496 31.47999999999999 286.712 27.65799999999999Q292.928 23.83599999999999 301.328 23.83599999999999Q312.75199999999995 23.83599999999999 319.05199999999996 29.50599999999999Q325.352 35.17599999999999 327.284 45.33999999999999L315.86 45.92799999999999Q314.768 40.04799999999999 311.15599999999995 36.68799999999999Q307.544 33.32799999999999 301.328 33.32799999999999Q293.768 33.32799999999999 289.316 39.20799999999999Q284.864 45.087999999999994 284.864 55.08399999999999Q284.864 65.16399999999999 289.35799999999995 70.91799999999999Q293.852 76.672 301.24399999999997 76.672Q307.88 76.672 311.534 73.018Q315.188 69.36399999999999 316.19599999999997 62.97999999999999L327.62 63.56799999999999Q325.856 74.068 319.178 80.11599999999999Q312.5 86.16399999999999 301.24399999999997 86.16399999999999Z M345.51199999999994 85.82799999999999Q338.45599999999996 85.82799999999999 334.17199999999997 82.636Q329.888 79.44399999999999 329.888 73.564Q329.888 67.768 333.5 64.49199999999999Q337.11199999999997 61.215999999999994 344.50399999999996 59.788L359.37199999999996 56.84799999999999Q359.37199999999996 47.27199999999999 350.71999999999997 47.27199999999999Q346.856 47.27199999999999 344.58799999999997 49.07799999999999Q342.32 50.88399999999999 341.56399999999996 54.24399999999999L330.64399999999995 53.739999999999995Q331.98799999999994 46.68399999999999 337.19599999999997 42.81999999999999Q342.404 38.95599999999999 350.71999999999997 38.95599999999999Q360.296 38.95599999999999 365.21 43.78599999999999Q370.12399999999997 48.61599999999999 370.12399999999997 57.60399999999999V73.89999999999999Q370.12399999999997 75.66399999999999 370.75399999999996 76.33599999999998Q371.38399999999996 77.008 372.64399999999995 77.008H374.07199999999995V84.82Q372.64399999999995 85.15599999999999 370.12399999999997 85.15599999999999Q366.51199999999994 85.15599999999999 363.99199999999996 83.64399999999999Q361.472 82.13199999999999 360.79999999999995 78.01599999999999V77.93199999999999Q359.11999999999995 81.46 355.04599999999994 83.64399999999999Q350.972 85.82799999999999 345.51199999999994 85.82799999999999ZM347.69599999999997 78.01599999999999Q353.07199999999995 78.01599999999999 356.222 74.90799999999999Q359.37199999999996 71.8 359.37199999999996 66.67599999999999V64.15599999999999L347.78 66.508Q344.16799999999995 67.264 342.6139999999999 68.734Q341.05999999999995 70.204 341.05999999999995 72.556Q341.05999999999995 78.01599999999999 347.69599999999997 78.01599999999999Z M377.01199999999994 84.82V39.96399999999999H387.0919999999999L387.34399999999994 48.69999999999999Q388.68799999999993 44.16399999999999 391.2919999999999 42.06399999999999Q393.89599999999996 39.96399999999999 398.09599999999995 39.96399999999999H402.21199999999993V49.20399999999999H398.01199999999994Q392.8879999999999 49.20399999999999 390.3259999999999 51.513999999999996Q387.76399999999995 53.82399999999999 387.76399999999995 58.94799999999999V84.82Z" fill="currentColor"/>
+  </symbol>
+</svg>
+
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="ZenCar, torna all'inizio"><svg viewBox="0 0 407 110" aria-hidden="true"><use href="#zc-logo"/></svg></a>
+    <ul>
+      <li><a href="#fasi">Come lavora</a></li>
+      <li><a href="#importa">Importa</a></li>
+      <li><a href="#funzioni">Funzioni</a></li>
+      <li><a href="#ruoli">Ruoli</a></li>
+      <li><a href="#demo" data-tipo="informazioni">Contatti</a></li>
+    </ul>
+    <a class="btn btn-pri" href="#demo" data-tipo="demo">Prenota una demo</a>
+  </div>
+</header>
+
+<main id="top">
+  <!-- HERO -->
+  <div class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Planning operativo per carrozzerie</p>
+        <h1 style="margin-top:18px">Sai già quando <em>esce</em> ogni vettura.</h1>
+        <p class="lead">ZenCar calcola giorno per giorno chi lavora su quale vettura, in quale reparto e quando sarà pronta. Tu inserisci operai, ore e date. Il planning si aggiorna da solo a ogni cambiamento.</p>
+        <div class="ctas">
+          <a class="btn btn-pri" href="#demo" data-tipo="demo">Prenota una demo</a>
+          <a class="btn btn-ghost" href="#fasi">Guarda come ragiona</a>
+        </div>
+        <div class="facts">
+          <div><b>5 fasi</b>in ordine fisso, per reparto</div>
+          <div><b>8 h</b>massimo al giorno per vettura</div>
+          <div><b>1 PDF</b>dall'autorizzazione al planning</div>
+        </div>
+      </div>
+
+      <div class="board" role="img" aria-label="Esempio di planning settimanale ZenCar con quattro vetture e le loro fasi di lavorazione">
+        <div class="board-top">
+          <span class="title">Carrozzeria Rossi</span>
+          <span class="week">Settimana 43 · 19–23 ottobre</span>
+        </div>
+        <div class="kpis">
+          <div><b class="num">14</b>Vetture da completare</div>
+          <div class="bad"><b class="num">1</b>Ritardi</div>
+          <div><b class="num">€ 18.420</b>Fatturato previsto</div>
+          <div><b class="num">3</b>In parcheggio</div>
+        </div>
+        <div class="gantt-scroll">
+          <div class="gantt">
+            <div class="h0"></div>
+            <div class="h today">Lun 19</div><div class="h">Mar 20</div><div class="h">Mer 21</div><div class="h">Gio 22</div><div class="h">Ven 23</div>
+
+            <div class="row">
+              <div class="car"><span class="plate"><span>GH 482 KT</span></span><small>Fiat 500X · cons. ven</small></div>
+              <div class="lane">
+                <div class="seg sr" style="grid-column:1/2;animation-delay:.05s">Stacco</div>
+                <div class="seg lat" style="grid-column:2/4;animation-delay:.12s">Lattoneria</div>
+                <div class="seg pv" style="grid-column:4/6;animation-delay:.19s">Verniciatura</div>
+                <div class="seg dry" style="grid-column:6/7;animation-delay:.26s"></div>
+                <div class="seg sr" style="grid-column:7/8;animation-delay:.33s">Riatt.</div>
+                <div class="seg luc" style="grid-column:8/9;animation-delay:.4s">Luc.</div>
+                <span class="flag ok" style="left:81%">In tempo</span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="car"><span class="plate"><span>FR 117 ZB</span></span><small>VW Golf · cons. ven</small></div>
+              <div class="lane">
+                <div class="seg lat" style="grid-column:1/5;animation-delay:.1s">Lattoneria</div>
+                <div class="seg pv" style="grid-column:5/7;animation-delay:.17s">Verniciatura</div>
+                <div class="seg sr" style="grid-column:7/9;animation-delay:.24s">Riattacco</div>
+                <div class="seg luc" style="grid-column:9/10;animation-delay:.31s">Luc.</div>
+                <span class="flag warn" style="right:4px">Stretto</span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="car"><span class="plate"><span>GL 905 MD</span></span><small>Peugeot 208 · urgente</small></div>
+              <div class="lane">
+                <div class="seg pv" style="grid-column:1/3;animation-delay:.15s">Verniciatura</div>
+                <div class="seg sr" style="grid-column:3/4;animation-delay:.22s">Riatt.</div>
+                <div class="seg luc" style="grid-column:4/5;animation-delay:.29s">Luc.</div>
+                <span class="flag ok" style="left:41%">Pronta mar</span>
+              </div>
+            </div>
+            <div class="row">
+              <div class="car"><span class="plate"><span>EZ 340 RC</span></span><small>Toyota Yaris · cons. lun 26</small></div>
+              <div class="lane">
+                <div class="seg sr" style="grid-column:3/4;animation-delay:.2s">Stacco</div>
+                <div class="seg lat" style="grid-column:4/8;animation-delay:.27s">Lattoneria</div>
+                <div class="seg pv" style="grid-column:8/11;animation-delay:.34s">Verniciatura</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="board-legend">
+          <span class="sr"><i></i>Stacco / Riattacco</span>
+          <span class="lat"><i></i>Lattoneria</span>
+          <span class="pv"><i></i>Verniciatura</span>
+          <span class="luc"><i></i>Lucidatura</span>
+        </div>
+        <div class="board-pop">
+          <div class="t"><span class="plate"><span>GH 482 KT</span></span> Fine lavori</div>
+          <dl class="num">
+            <dt>Ingresso</dt><dd>lun 19 ott</dd>
+            <dt>Fine stimata</dt><dd>gio 22 ott</dd>
+            <dt>Consegna</dt><dd>ven 23 ott</dd>
+          </dl>
+          <p class="note"><b>Un giorno di margine.</b> Nessuna altra vettura cambia data.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FASI -->
+  <section id="fasi" style="background:var(--surface);border-block:1px solid var(--line)">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Come ragiona ZenCar</p>
+          <h2>Ragiona come il tuo capofficina</h2>
+        </div>
+        <p class="lead">Ogni vettura attraversa al massimo cinque fasi, sempre nello stesso ordine. Una fase con zero ore si salta. La capacità si legge per reparto, mai in ore totali: chi sa verniciare non diventa un lattoniere perché in agenda ci sono ore libere.</p>
+      </div>
+      <div class="phases">
+        <div class="phase sr"><span class="n">FASE 1</span><h3>Stacco</h3><p>Smontaggio delle parti da sostituire o riparare.</p><span class="dep">Reparto stacco / riattacco</span></div>
+        <div class="phase lat"><span class="n">FASE 2</span><h3>Lattoneria</h3><p>Riparazione lamiera, interventi strutturali, taglio e saldatura.</p><span class="dep">Reparto lattoneria</span></div>
+        <div class="phase pv"><span class="n">FASE 3</span><h3>Verniciatura</h3><p>Preparazione, fondo e verniciatura in cabina.</p><span class="dep">Reparto preparazione e verniciatura</span></div>
+        <div class="phase sr"><span class="n">FASE 4</span><h3>Riattacco</h3><p>Rimontaggio, dopo l'essiccazione della vernice.</p><span class="dep">Reparto stacco / riattacco</span></div>
+        <div class="phase luc"><span class="n">FASE 5</span><h3>Lucidatura</h3><p>Finitura e controllo prima della consegna.</p><span class="dep">Reparto lucidatura</span></div>
+      </div>
+      <p class="dry-note"><i></i><span>L'<b style="color:var(--ink)">essiccazione</b> (di base 30 minuti) occupa la giornata della vettura ma non gli operai. Se non resta abbastanza giornata, il riattacco passa al giorno lavorativo successivo.</span></p>
+    </div>
+  </section>
+
+  <!-- IMPORTA -->
+  <section id="importa" class="band">
+    <div class="wrap convert">
+      <div>
+        <p class="eyebrow">Dall'autorizzazione al planning</p>
+        <h2 style="margin-top:16px">Carichi il PDF.<br>Le ore vanno al reparto giusto.</h2>
+        <ol class="steps">
+          <li><div><b>Importa l'autorizzazione</b><span>ZenCar legge targa, modello, righe di lavoro e importo imponibile direttamente dal PDF, anche scansionato.</span></div></li>
+          <li><div><b>Converte le ore vendute</b><span>Le ore in centesimi (0,10 = 6 minuti) diventano ore tecniche con i coefficienti della tua officina, riga per riga.</span></div></li>
+          <li><div><b>La vettura va in parcheggio</b><span>Pronta da pianificare quando decidi tu il giorno di ingresso.</span></div></li>
+        </ol>
+      </div>
+
+      <div class="sheet">
+        <div class="sheet-head">
+          <span class="plate lg"><span>GH 482 KT</span></span>
+          <div class="meta">Fiat 500X · Pratica PM 204817<br>Imponibile autorizzato € 1.284,00</div>
+          <span class="badge">Letta dal PDF</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Intervento</th><th class="r">Ore vendute</th><th class="r">Coeff.</th><th>Va in</th></tr></thead>
+            <tbody>
+              <tr><td>Sostituzione parafango ant. sx</td><td class="r">2,00</td><td class="r">× 0,5</td><td><div class="to"><span class="chip sr">Stacco 30′</span><span class="chip sr">Riattacco 30′</span></div></td></tr>
+              <tr><td>Riparazione lamiera porta ant. sx</td><td class="r">4,50</td><td class="r">× 0,7</td><td><div class="to"><span class="chip lat">Lattoneria 3 h 15′</span></div></td></tr>
+              <tr><td>Verniciatura parafango e porta</td><td class="r">6,00</td><td class="r">× 0,8</td><td><div class="to"><span class="chip pv">Verniciatura 4 h 30′</span><span class="chip luc">Lucidatura 15′</span></div></td></tr>
+              <tr><td>Sostituzione sensore parcheggio</td><td class="r">0,60</td><td class="r">–</td><td style="color:var(--muted)">Meccanica, non pianificata</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="sheet-foot num">
+          <div class="sr"><b>0:30</b>Stacco</div>
+          <div class="lat"><b>3:15</b>Lattoneria</div>
+          <div class="pv"><b>4:30</b>Verniciatura</div>
+          <div class="sr"><b>0:30</b>Riattacco</div>
+          <div class="luc"><b>0:15</b>Lucidatura</div>
+        </div>
+        <p class="sheet-note">Esempio. Arrotondamento al quarto d'ora. Coefficienti e ripartizioni si cambiano nelle Impostazioni o sulla singola pratica.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- PIANIFICA -->
+  <section id="pianifica">
+    <div class="wrap decide">
+      <div>
+        <p class="eyebrow" style="margin-bottom:14px">Prova: scegli il giorno di ingresso</p>
+        <div class="days" role="group" aria-label="Giorno di ingresso">
+          <button class="day" id="d-lun" type="button" data-i="0" aria-pressed="false"><span class="d">Lun 19</span><span class="e">fine stimata<b>mer 21</b></span></button>
+          <button class="day" id="d-mar" type="button" data-i="1" aria-pressed="true"><span class="d">Mar 20</span><span class="e">fine stimata<b>gio 22</b></span></button>
+          <button class="day" id="d-mer" type="button" data-i="2" aria-pressed="false"><span class="d">Mer 21</span><span class="e">fine stimata<b>ven 23</b></span></button>
+          <button class="day" id="d-gio" type="button" data-i="3" aria-pressed="false"><span class="d">Gio 22</span><span class="e">fine stimata<b>lun 26</b></span></button>
+          <button class="day" id="d-ven" type="button" data-i="4" aria-pressed="false"><span class="d">Ven 23</span><span class="e">fine stimata<b>mar 27</b></span></button>
+        </div>
+        <div class="impact" id="impact" aria-live="polite"></div>
+      </div>
+      <div>
+        <p class="eyebrow">Pianifica senza sorprese</p>
+        <h2 style="margin-top:16px">Prima di confermare, vedi chi slitta</h2>
+        <p class="lead" style="margin-top:20px">Per ogni giorno di ingresso ZenCar mostra la fine lavori stimata. Quando scegli, vedi la fine effettiva e l'elenco delle vetture che cambierebbero data. Se qualcuna finirebbe in ritardo, il planning chiede conferma.</p>
+        <p class="lead" style="margin-top:14px">Quando le ore non bastano decide un ordine chiaro: fasi fissate a mano, poi urgenti, poi consegna più vicina, poi ingresso più vecchio.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FUNZIONI -->
+  <section id="funzioni" style="padding-top:0">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Funzioni</p>
+          <h2>Quello che serve, ogni mattina</h2>
+        </div>
+        <p class="lead">Pensato per l'accettazione che pianifica e per l'officina che esegue. Testi grandi, pulsanti comodi, nessun gergo da gestionale.</p>
+      </div>
+      <div class="features">
+        <div class="feat"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span><h3>Bacheca consegne</h3><p>Vetture pronte e consegne a rischio dal giorno lavorativo prima. Posticipa, cambia data, segna "cliente avvisato".</p><span class="ex">Propone fino a 3 pratiche non urgenti da sospendere</span></div>
+        <div class="feat"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M17 5.5a3 3 0 0 1 0 5.5M19 20a5.5 5.5 0 0 0-3-4.9"/></svg></span><h3>Competenze degli operai</h3><p>Primaria obbligatoria, secondaria facoltativa. La secondaria entra in gioco solo quando nel proprio reparto non c'è lavoro.</p><span class="ex">"+2h Marco in secondaria" direttamente in calendario</span></div>
+        <div class="feat"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m7 15 4-4 3 3 5-6"/></svg></span><h3>Fatturato previsto</h3><p>Somma degli importi delle vetture che escono nella settimana o nel mese, se il planning viene rispettato.</p><span class="ex">Le vetture senza importo sono segnalate a parte</span></div>
+        <div class="feat"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg></span><h3>Assenze e straordinari</h3><p>Ferie, orari ridotti, ore in più e operai aggiunti, giorno per giorno o su un intervallo di date.</p><span class="ex">Il planning ricalcola tutte le date in un attimo</span></div>
+        <div class="feat"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 9v6M14 9v6"/></svg></span><h3>Stand-by tracciati</h3><p>Ricambi in attesa, perizia da rifare: metti la vettura in stand-by con un motivo e le sue ore tornano disponibili.</p><span class="ex">Ogni eccezione finisce nel registro della vettura</span></div>
+        <div class="feat"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V8l7-5 7 5v13"/><path d="M9 21v-6h6v6"/></svg></span><h3>Più sedi</h3><p>Ogni carrozzeria ha il suo planning, i suoi operai e le sue impostazioni. Passi dall'una all'altra con un clic.</p><span class="ex">Aggiornamenti dei colleghi in tempo reale</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- RUOLI -->
+  <section id="ruoli" style="background:var(--surface);border-block:1px solid var(--line)">
+    <div class="wrap">
+      <div class="sec-head">
+        <div>
+          <p class="eyebrow">Ruoli</p>
+          <h2>Ognuno vede la sua parte</h2>
+        </div>
+        <p class="lead">Utenti su invito, ciascuno con il proprio ruolo. L'officina segna le fasi fatte senza vedere gli importi.</p>
+      </div>
+      <div class="roles">
+        <div class="role"><span class="who">Chi guida l'azienda</span><h3>Titolare</h3><p>Tutto: utenti, impostazioni, vetture, importi, copie di sicurezza e ripristini.</p></div>
+        <div class="role"><span class="who">Al banco</span><h3>Accettazione</h3><p>Vetture, operai, impostazioni e importi. Importa le autorizzazioni e pianifica.</p></div>
+        <div class="role"><span class="who">In reparto</span><h3>Officina</h3><p>Consulta il planning e segna le fasi fatte. Non vede importi né copie.</p></div>
+        <div class="role"><span class="who">In ufficio</span><h3>Amministrazione</h3><p>Consulta il planning, gestisce importi e copie. Non modifica le vetture.</p></div>
+      </div>
+      <div class="trust">
+        <div><b>Dati in Europa</b><span>Database su server a Francoforte. Il calcolo avviene sul server, non nel browser.</span></div>
+        <div><b>Copie ogni notte</b><span>Copia automatica giornaliera conservata 30 giorni, più le tue copie manuali.</span></div>
+        <div><b>Registro modifiche</b><span>Chi ha cambiato cosa e quando, per 180 giorni.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ORIGINE -->
+  <section>
+    <div class="wrap origin">
+      <blockquote>Nato dentro una carrozzeria multiservice, per rispondere ogni giorno alla stessa domanda del cliente: quando è pronta la mia macchina?</blockquote>
+      <div class="side">
+        <p>ZenCar non è un gestionale adattato. Le sue regole vengono dal lavoro vero di un'officina: tempi e non orari, ore per reparto, essiccazione, ricambi in attesa, urgenze che scavalcano la coda.</p>
+        <p>Il risultato è un planning che il capofficina riconosce subito come suo.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section id="demo" class="band cta">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow" id="cta-eyebrow">Demo gratuita</p>
+        <h2 style="margin-top:16px" id="cta-titolo">Porta il planning della tua carrozzeria su ZenCar</h2>
+        <p class="lead" style="margin-top:20px" id="cta-testo">In 30 minuti carichiamo insieme i tuoi operai e due autorizzazioni reali. Vedi subito le date di consegna calcolate sulla tua officina.</p>
+        <p class="alt" id="cta-alt">Hai solo una domanda? <button type="button" data-tipo="informazioni">Chiedi informazioni</button></p>
+      </div>
+      <form id="contatti" novalidate>
+        <fieldset class="tipo">
+          <legend>Tipo di richiesta</legend>
+          <input type="radio" name="tipo" id="t-demo" value="demo" checked><label for="t-demo">Prenota una demo</label>
+          <input type="radio" name="tipo" id="t-info" value="informazioni"><label for="t-info">Chiedi informazioni</label>
+        </fieldset>
+        <label>Nome e cognome<input id="f-nome" name="nome" type="text" autocomplete="name" maxlength="120" required></label>
+        <label>Carrozzeria<input id="f-azienda" name="azienda" type="text" autocomplete="organization" maxlength="160" required></label>
+        <label>Email<input id="f-email" name="email" type="email" autocomplete="email" maxlength="200" required></label>
+        <label>Telefono<input id="f-telefono" name="telefono" type="tel" autocomplete="tel" maxlength="40"></label>
+        <label class="full">Operai in produzione<select id="f-operai" name="operai"><option>Fino a 5</option><option selected>Da 6 a 15</option><option>Da 16 a 30</option><option>Più di 30 o più sedi</option></select></label>
+        <label class="full"><span id="f-messaggio-et">Messaggio (facoltativo)</span><textarea id="f-messaggio" name="messaggio" maxlength="3000" placeholder="Per esempio: quante sedi avete, come pianificate oggi, quando vi farebbe comodo la demo"></textarea></label>
+        <label class="hp" aria-hidden="true">Sito web<input id="f-sito" name="sito" type="text" tabindex="-1" autocomplete="off"></label>
+        <label class="consenso"><input id="f-consenso" name="consenso" type="checkbox" required><span>Acconsento al trattamento dei miei dati per essere ricontattato su questa richiesta.</span></label>
+        <button class="btn btn-pri" type="submit" id="f-invia">Richiedi la demo</button>
+        <p class="msg" id="f-msg" role="status" aria-live="polite" hidden></p>
+      </form>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="logo" href="#top" aria-label="ZenCar"><svg viewBox="0 0 407 110" aria-hidden="true"><use href="#zc-logo"/></svg></a>
+    <span>Planning operativo per carrozzerie · © 2026</span>
+    <nav><a href="#fasi">Come lavora</a><a href="#funzioni">Funzioni</a><a href="#ruoli">Ruoli</a><a href="#demo" data-tipo="demo">Demo</a><a href="#demo" data-tipo="informazioni">Chiedi informazioni</a></nav>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var plate='<span class="plate"><span>GH 482 KT</span></span>';
+  var data=[
+    {end:'mer 21 ott',state:['ok','In tempo'],list:[['FR 117 ZB','ven 23 → lun 26','late'],['EZ 340 RC','lun 26 → mar 27','fine']]},
+    {end:'gio 22 ott',state:['ok','In tempo'],list:[['EZ 340 RC','lun 26 → mar 27','fine']]},
+    {end:'ven 23 ott',state:['warn','Margine stretto'],list:[]},
+    {end:'lun 26 ott',state:['bad','In ritardo'],list:[]},
+    {end:'mar 27 ott',state:['bad','In ritardo'],list:[]}
+  ];
+  var box=document.getElementById('impact');
+  var btns=document.querySelectorAll('.day');
+  function render(i){
+    var d=data[i];
+    btns.forEach(function(b){b.setAttribute('aria-pressed',b.dataset.i==i?'true':'false')});
+    var h='<div class="row2"><span>'+plate+' &nbsp;consegna ven 23 ott</span><span class="state '+d.state[0]+'">'+d.state[1]+'</span></div>';
+    h+='<div class="row2"><span class="muted" style="color:var(--muted)">Fine lavori effettiva</span><span class="big num">'+d.end+'</span></div>';
+    if(d.list.length){
+      h+='<ul>'+d.list.map(function(r){return '<li><span class="plate"><span>'+r[0]+'</span></span><span class="num">'+r[1]+'</span><span class="'+r[2]+'">'+(r[2]==='late'?'finirebbe in ritardo, serve conferma':'ancora in tempo')+'</span></li>'}).join('')+'</ul>';
+    }else{
+      h+='<ul><li style="color:var(--muted)">Nessuna altra vettura cambia data.</li></ul>';
+    }
+    box.innerHTML=h;
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){render(+b.dataset.i)})});
+  render(1);
+  // modulo contatti: invia alla funzione "contatti" del server, che inoltra la richiesta per email
+  var LOCALE=/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  var INDIRIZZO=LOCALE?'http://127.0.0.1:54321/functions/v1/contatti':'https://lnkcymbocvonmaklofzm.supabase.co/functions/v1/contatti';
+  var f=document.getElementById('contatti'), msg=document.getElementById('f-msg'), invia=document.getElementById('f-invia');
+  var TESTI={
+    demo:{eyebrow:'Demo gratuita',titolo:'Porta il planning della tua carrozzeria su ZenCar',testo:'In 30 minuti carichiamo insieme i tuoi operai e due autorizzazioni reali. Vedi subito le date di consegna calcolate sulla tua officina.',bottone:'Richiedi la demo',messaggio:'Messaggio (facoltativo)'},
+    informazioni:{eyebrow:'Contatti',titolo:'Scrivici, ti rispondiamo noi',testo:'Prezzi, numero di sedi, come si passa da Excel o da un altro gestionale: chiedi quello che ti serve sapere.',bottone:'Invia la richiesta',messaggio:'La tua domanda'}
+  };
+  function tipo(){return f.querySelector('input[name="tipo"]:checked').value}
+  function aggiornaTipo(){
+    var t=TESTI[tipo()];
+    document.getElementById('cta-eyebrow').textContent=t.eyebrow;
+    document.getElementById('cta-titolo').textContent=t.titolo;
+    document.getElementById('cta-testo').textContent=t.testo;
+    document.getElementById('cta-alt').hidden=tipo()!=='demo';
+    document.getElementById('f-messaggio-et').textContent=t.messaggio;
+    if(!invia.disabled)invia.textContent=t.bottone;
+  }
+  function scegli(t){document.getElementById(t==='demo'?'t-demo':'t-info').checked=true;aggiornaTipo()}
+  f.querySelectorAll('input[name="tipo"]').forEach(function(r){r.addEventListener('change',aggiornaTipo)});
+  document.querySelectorAll('[data-tipo]').forEach(function(el){el.addEventListener('click',function(){
+    scegli(el.dataset.tipo);
+    if(el.tagName==='BUTTON')document.getElementById('f-nome').focus();
+  })});
+  function mostra(testo,classe){msg.textContent=testo;msg.className='msg '+classe;msg.hidden=false}
+  function segna(campo){
+    f.querySelectorAll('[aria-invalid]').forEach(function(x){x.removeAttribute('aria-invalid')});
+    var el=campo&&document.getElementById('f-'+campo);
+    if(el){el.setAttribute('aria-invalid','true');el.focus()}
+  }
+  function controlla(d){
+    if(!d.nome)return ['nome','Scrivi nome e cognome.'];
+    if(!d.azienda)return ['azienda','Scrivi il nome della carrozzeria.'];
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))return ['email','Controlla l\u2019indirizzo email.'];
+    if(d.tipo==='informazioni'&&!d.messaggio)return ['messaggio','Scrivi la tua domanda.'];
+    if(!d.consenso)return ['consenso','Serve il consenso per poterti ricontattare.'];
+    return null;
+  }
+  f.addEventListener('submit',function(e){
+    e.preventDefault();
+    var v=function(id){return document.getElementById('f-'+id).value.trim()};
+    var d={tipo:tipo(),nome:v('nome'),azienda:v('azienda'),email:v('email'),telefono:v('telefono'),operai:v('operai'),messaggio:v('messaggio'),consenso:document.getElementById('f-consenso').checked,sito:v('sito')};
+    var err=controlla(d);
+    if(err){segna(err[0]);mostra(err[1],'err');return}
+    segna(null);msg.hidden=true;invia.disabled=true;invia.textContent='Invio in corso\u2026';
+    var nome=d.nome.split(' ')[0];
+    fetch(INDIRIZZO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)})
+      .then(function(r){return r.json().catch(function(){return {}}).then(function(j){return {ok:r.ok,j:j}})})
+      .then(function(x){
+        if(x.ok&&x.j.ok){
+          f.classList.add('inviato');
+          mostra(d.tipo==='demo'?'Grazie, '+nome+'. Abbiamo ricevuto la tua richiesta di demo: ti ricontattiamo entro un giorno lavorativo.':'Grazie, '+nome+'. Abbiamo ricevuto la tua domanda: ti rispondiamo entro un giorno lavorativo.','ok');
+        }else{
+          var t=x.j.errore||'Invio non riuscito';
+          segna(x.j.campo);mostra(/[.!?]$/.test(t)?t:t+'.','err');
+        }
+      })
+      .catch(function(){mostra('Invio non riuscito. Controlla la connessione e riprova tra qualche minuto.','err')})
+      .then(function(){invia.disabled=false;aggiornaTipo()});
+  });
+  aggiornaTipo();
+})();
+</script>
+</body>
+</html>
