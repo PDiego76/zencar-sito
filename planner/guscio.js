@@ -28,8 +28,12 @@ function trova(ind) {
   if (firma(r) === ind.f && !ind.n) return r;
   return [...r.querySelectorAll(ind.f.split('|')[0])].filter(x => firma(x) === ind.f)[ind.n || 0] || null;
 }
+// valore di ogni campo al momento dell'ultimo invio: se l'utente scrive ancora mentre la risposta è in viaggio,
+// quella risposta non deve riportare il campo indietro
+const inviato = new WeakMap();
+const statoCampo = c => (c.type === 'checkbox' || c.type === 'radio' ? c.checked : c.value);
 const campiDi = r => [...r.querySelectorAll('input, select, textarea')].filter(c => c.type !== 'file')
-  .map(c => [indirizzo(c), c.value, c.type === 'checkbox' || c.type === 'radio' ? c.checked : null]);
+  .map(c => { inviato.set(c, statoCampo(c)); return [indirizzo(c), c.value, c.type === 'checkbox' || c.type === 'radio' ? c.checked : null]; });
 function evento(tipo, el, extra = {}) {
   const ind = el === document.body ? { k: 'body' } : indirizzo(el); if (!ind) return;
   // prima di ogni altra azione partono le scritture ancora in attesa (es. ore che ricalcolano altri campi)
@@ -102,10 +106,13 @@ function aggiornaParte(p) {
   morphdom(el, '<div>' + p.html + '</div>', {
     childrenOnly: true,
     onBeforeElUpdated: (da, a) => {
-      // campo che il server non ha cambiato: il nuovo elemento riceve il valore dell'utente, così morphdom non lo tocca
-      if (da.tagName === 'INPUT' && (da.type === 'checkbox' || da.type === 'radio')) { if (da.hasAttribute('checked') === a.hasAttribute('checked')) a.checked = da.checked; }
-      else if (da.tagName === 'INPUT' || da.tagName === 'TEXTAREA') { if (da.getAttribute('value') === a.getAttribute('value')) a.value = da.value; }
-      else if (da.tagName === 'SELECT') { const v = s => (s.querySelector('option[selected]') || {}).value; if (v(da) === v(a)) a.value = da.value; }
+      // il valore dell'utente resta (il nuovo elemento lo riceve, così morphdom non lo tocca) se:
+      // - l'utente ha cambiato il campo dopo l'ultimo invio (la risposta porta un valore ormai vecchio), oppure
+      // - il server non ha cambiato il campo. Altrimenti vale il valore del server (es. ore ricalcolate).
+      const toccato = inviato.has(da) && inviato.get(da) !== statoCampo(da);
+      if (da.tagName === 'INPUT' && (da.type === 'checkbox' || da.type === 'radio')) { if (toccato || da.hasAttribute('checked') === a.hasAttribute('checked')) a.checked = da.checked; }
+      else if (da.tagName === 'INPUT' || da.tagName === 'TEXTAREA') { if (toccato || da.getAttribute('value') === a.getAttribute('value')) a.value = da.value; }
+      else if (da.tagName === 'SELECT') { const v = s => (s.querySelector('option[selected]') || {}).value; if (toccato || v(da) === v(a)) a.value = da.value; }
       if (da.tagName === 'DETAILS') da.open = a.hasAttribute('open');
       return true;
     }
