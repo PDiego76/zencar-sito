@@ -1,0 +1,26 @@
+/* Accesso, pagina iniziale e finestra Utenti: si appoggiano allo stile #landing del planning (planning.css). */
+#landing .lcard.stretta { width: min(440px, 100%); }
+#landing .lbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted, #52657a); font-size: 13px; }
+#landing .lbar .esci { height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line, #cfd8e0); background: var(--surface, #fff); color: var(--ink, #1c2733); font: 500 13px var(--f, system-ui); cursor: pointer; }
+#landing .lok, #dlgUtenti .lok { margin: 0; padding: 10px 14px; border-radius: 8px; background: #e6f3ec; color: var(--ok, #187047); border: 1px solid #b9dcc8; font-size: 14px; }
+#dlgUtenti .lerr { margin: 0; padding: 10px 14px; border-radius: 8px; background: color-mix(in srgb, var(--bad, #b42318) 10%, transparent); color: var(--bad, #b42318); font-size: 14px; }
+#dlgUtenti .lnote { margin: 0; color: var(--muted, #52657a); font-size: 13px; }
+#landing .link { border: 0; background: none; padding: 0; color: var(--ink, #1c2733); text-decoration: underline; cursor: pointer; font: 400 13px var(--f, system-ui); }
+#landing .modulo { display: grid; gap: 14px; background: var(--surface, #fff); border: 1px solid var(--line, #cfd8e0); border-radius: 10px; padding: 20px; }
+#landing .modulo label { display: grid; gap: 4px; font: 500 13px var(--f, system-ui); }
+#landing .modulo input { height: 38px; border: 1px solid var(--line, #cfd8e0); border-radius: 6px; padding: 0 10px; font: 400 15px var(--f, system-ui); }
+#landing .modulo input:focus { border-color: var(--tape); outline: none; box-shadow: 0 0 0 1px var(--tape); }
+#landing .modulo .btn { height: 40px; justify-content: center; }
+#dlgUtenti .riga { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; border-top: 1px solid var(--line); }
+#dlgUtenti .riga .chi { flex: 1 1 220px; min-width: 0; overflow-wrap: anywhere; }
+#dlgUtenti .riga .chi small { display: block; color: var(--muted); font-size: 12px; }
+#dlgUtenti .invita { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+#dlgUtenti .invita label { display: grid; gap: 4px; font-size: 13px; font-weight: 500; }
+#dlgUtenti .invita label:first-child { flex: 1 1 220px; }
+#dlgUtenti .invita input { width: 100%; }
+#dlgUtenti .ruoli { margin: 0; padding-left: 18px; color: var(--muted); font-size: 13px; }
+/* mentre il server calcola: puntatore di attesa, nessun blocco */
+body.calcolo { cursor: progress; }
+
+/* richiesta al server in corso da più di 400 ms */
+body.attesa { cursor: progress; }

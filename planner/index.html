@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="it" data-theme="light" data-look="control">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src 'self' https://lnkcymbocvonmaklofzm.supabase.co wss://lnkcymbocvonmaklofzm.supabase.co http://127.0.0.1:54321 ws://127.0.0.1:54321 https://cdnjs.cloudflare.com; img-src 'self' data: blob:; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>Pianificazione Carrozzeria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Inter:wght@300;400;500;600;700&family=Figtree:wght@300;400;500;600;700&family=Arimo:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="planning.css">
+<link rel="stylesheet" href="accesso.css">
+</head>
+<body>
+<!-- le parti della pagina le riempie il server (server/planning.js) -->
+<header class="top" data-k="intestazione"></header>
+<main id="main" data-k="main"></main>
+<dialog id="dlg" data-k="dlg"></dialog>
+<div id="pop" class="pop" data-k="pop" hidden></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js" integrity="sha384-Rj26LVGvoeRVR6+mwQmFfcR3QOBEwT+ZmuCWpuiqeTzJpCs0ER4ITAWGb4Hiy3Ok" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/morphdom@2.7.8/dist/morphdom-umd.min.js" integrity="sha384-H9LbLjNYOs1B0xEiev/dWN+wPEUa21jl7OhKSNLbyKgwDD91VLJGCgvFUE2WvmTa" crossorigin="anonymous"></script>
+<script src="config.js"></script>
+<script src="guscio.js"></script>
+<script src="accesso.js"></script>
+</body>
+</html>
