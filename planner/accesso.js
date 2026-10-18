@@ -226,7 +226,7 @@ const Accesso = (() => {
       dlg = document.createElement('dialog'); dlg.id = 'dlgUtenti'; dlg.setAttribute('aria-label', 'Utenti della carrozzeria');
       document.body.appendChild(dlg);
       dlg.addEventListener('click', ev => {
-        if (ev.target === dlg || ev.target.closest('[data-x]')) return dlg.close();
+        if (ev.target.closest('[data-x]')) return dlg.close(); // niente chiusura con un clic sullo sfondo
         const r = ev.target.closest('[data-rimuovi]'); if (r) cambiaMembro(r.dataset.rimuovi, null);
       });
       dlg.addEventListener('change', ev => { const s = ev.target.closest('[data-ruolo]'); if (s) cambiaMembro(s.dataset.ruolo, s.value); });
