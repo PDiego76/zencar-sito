@@ -11,7 +11,7 @@ const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
 const PDFJS_SRI = { 'pdf.min.js': 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e', 'pdf.worker.min.js': 'sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2' };
 // stato della conversazione con "planner": vista di partenza, azioni nella finestra aperta, avviso "Annulla"
 const C = { voce: null, uiBase: null, catena: [], imp: null, annulla: null, impronte: {}, primo: true, versione: 0 };
-let ultimoClic = { x: 200, y: 200 }, popPos = null, mangiaClic = false, coda = Promise.resolve(), inVolo = 0;
+let ultimoClic = { x: 200, y: 200 }, popPos = null, mangiaClic = false;
 window.__messaggi = 0; window.__inVolo = 0;
 
 /* ---------------- indirizzi degli elementi: radice (data-k), firma, numero d'ordine ---------------- */
@@ -32,40 +32,83 @@ function trova(ind) {
 // quella risposta non deve riportare il campo indietro
 const inviato = new WeakMap();
 const statoCampo = c => (c.type === 'checkbox' || c.type === 'radio' ? c.checked : c.value);
-const campiDi = r => [...r.querySelectorAll('input, select, textarea')].filter(c => c.type !== 'file')
-  .map(c => { inviato.set(c, statoCampo(c)); return [indirizzo(c), c.value, c.type === 'checkbox' || c.type === 'radio' ? c.checked : null]; });
+const campo = c => [indirizzo(c), c.value, c.type === 'checkbox' || c.type === 'radio' ? c.checked : null];
+const eCampo = el => el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) && el.type !== 'file';
+// il campo ha un valore diverso da quello disegnato dal server (cioè l'utente l'ha cambiato)
+const diversoDalServer = c => c.type === 'checkbox' || c.type === 'radio' ? c.checked !== c.hasAttribute('checked')
+  : c.tagName === 'SELECT' ? c.value !== ((c.querySelector('option[selected]') || c.querySelector('option') || {}).value ?? '')
+  : c.value !== (c.getAttribute('value') ?? (c.tagName === 'TEXTAREA' ? c.defaultValue : ''));
+/** I campi della parte di pagina (radice) in cui avviene l'azione: quello dell'azione e quelli cambiati dall'utente.
+ *  Gli altri il server li conosce già: rimandarli riporterebbe indietro valori che ha appena ricalcolato. */
+function campiDi(r, proprio) {
+  const out = [];
+  for (const c of r.querySelectorAll('input, select, textarea')) { if (c.type === 'file' || (c !== proprio && !diversoDalServer(c))) continue; inviato.set(c, statoCampo(c)); out.push(campo(c)); }
+  return out;
+}
 function evento(tipo, el, extra = {}) {
   const ind = el === document.body ? { k: 'body' } : indirizzo(el); if (!ind) return;
   // prima di ogni altra azione partono le scritture ancora in attesa (es. ore che ricalcolano altri campi)
   if (tipo !== 'input') svuotaInput();
   // i valori dei campi si leggono quando la richiesta parte: già aggiornati dalle risposte precedenti
-  invia(Object.assign({ t: tipo, ind, _radice: el === document.body ? null : ind.k }, extra));
+  invia(Object.assign({ t: tipo, ind, _radice: el === document.body ? null : ind.k, _el: el }, extra));
 }
 
-/* ---------------- richieste a "planner", una alla volta ---------------- */
+/* ---------------- richieste a "planner": una alla volta, a gruppi ----------------
+   Le azioni fatte mentre una richiesta è in viaggio aspettano e partono tutte insieme nella successiva:
+   anche con la rete lenta i viaggi restano pochi. L'anteprima del trascinamento parte subito, a parte. */
+let inCoda = [], lavoro = null, anteprime = 0;
+const occupato = () => !!lavoro || inCoda.length > 0 || anteprime > 0;
 // in attesa: richieste in coda o in corso, più le scritture non ancora inviate (usato anche dalle prove automatiche)
-const aggiornaAttesa = () => { window.__inVolo = inVolo + attesaInput.size; };
-function invia(ev) { inVolo++; aggiornaAttesa(); coda = coda.then(() => richiesta(ev)).catch(e => console.error(e)).finally(() => { inVolo--; aggiornaAttesa(); }); return coda; }
-async function richiesta(ev) {
-  if ('_radice' in ev) { const r = ev._radice && document.querySelector('body > [data-k="' + CSS.escape(ev._radice) + '"]'); ev.campi = r ? campiDi(r) : []; delete ev._radice; }
+const aggiornaAttesa = () => { window.__inVolo = (lavoro ? 1 : 0) + inCoda.length + anteprime + attesaInput.size; };
+function invia(ev) {
+  if (ev.t === 'anteprima') { anteprime++; aggiornaAttesa(); return richiesta([ev]).finally(() => { anteprime--; aggiornaAttesa(); }); }
+  return new Promise(ok => { inCoda.push({ ev, ok }); aggiornaAttesa(); lavora(); });
+}
+function lavora() {
+  if (lavoro) return;
+  lavoro = (async () => {
+    while (inCoda.length) {
+      const gruppo = inCoda.splice(0);
+      try { await richiesta(gruppo.map(x => x.ev)); } catch (e) { console.error(e); }
+      gruppo.forEach(x => x.ok());
+    }
+    lavoro = null; aggiornaAttesa();
+  })();
+  aggiornaAttesa();
+}
+const barra = (() => { const b = document.createElement('div'); b.id = 'avanzamento'; b.setAttribute('aria-hidden', 'true'); document.body.appendChild(b); return b; })();
+async function richiesta(eventi) {
+  // l'ultima azione porta i campi cambiati dall'utente; le precedenti solo il proprio campo,
+  // l'unico che il loro gestore legge: richieste leggere anche quando le azioni partono a gruppi
+  eventi.forEach((ev, i) => {
+    if (!('_radice' in ev)) return;
+    const r = ev._radice && document.querySelector('body > [data-k="' + CSS.escape(ev._radice) + '"]');
+    ev.campi = !r ? [] : i === eventi.length - 1 ? campiDi(r, ev._el) : eCampo(ev._el) ? [campo(ev._el)] : [];
+    if (eCampo(ev._el)) inviato.set(ev._el, statoCampo(ev._el));
+    delete ev._radice; delete ev._el;
+  });
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { location.reload(); return; }
-  const lento = setTimeout(() => document.body.classList.add('attesa'), 400);
+  // se il server ci mette più di un attimo: barra di avanzamento in alto e puntatore di attesa
+  const lento = setTimeout(() => { document.body.classList.add('attesa'); barra.classList.add('on'); }, 300);
   try {
     let vista = null; try { vista = JSON.parse(sessionStorage.getItem('vista') || 'null'); } catch (e) { }
     const prefs = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^planning-vista/.test(k)) prefs[k] = localStorage.getItem(k); } } catch (e) { }
-    const corpo = { carrozzeria_id: C.voce.id, uiBase: C.uiBase || (C.primo && vista) || null, catena: C.catena, evento: ev, imp: C.imp, annulla: C.annulla,
+    const corpo = { carrozzeria_id: C.voce.id, uiBase: C.uiBase || (C.primo && vista) || null, catena: C.catena, eventi, imp: C.imp, annulla: C.annulla,
       impronte: C.impronte, primo: C.primo, prefs, larghezza: innerWidth, altezza: innerHeight, ora: window.__ORA_FINTA || null };
     const r = await fetch(window.CONFIG.url + '/functions/v1/planner', { method: 'POST', body: JSON.stringify(corpo),
       headers: { 'Content-Type': 'application/json', apikey: window.CONFIG.chiave, Authorization: 'Bearer ' + session.access_token } });
     const d = await r.json().catch(() => ({ errore: 'Risposta non leggibile dal server.' }));
-    if (ev.t === 'anteprima') return d.anteprima;
+    if (eventi[0].t === 'anteprima') return d.anteprima;
     if (!r.ok || d.errore) { mostraErrore(d.errore || 'Operazione non riuscita (' + r.status + ').'); return; }
     C.primo = false; C.versione = Math.max(C.versione, d.versione || 0); C.uiBase = d.uiBase; C.catena = d.catena || []; C.imp = d.imp; C.annulla = d.annulla || null;
     try { sessionStorage.setItem('vista', JSON.stringify({ tab: d.ui.tab, view: d.ui.view, weekStart: d.ui.weekStart, month: d.ui.month })); } catch (e) { }
     applica(d);
   } catch (e) { mostraErrore('Connessione con il server non riuscita: riprova.'); }
-  finally { clearTimeout(lento); window.__messaggi++; if (inVolo <= 1) document.body.classList.remove('attesa'); }
+  finally {
+    clearTimeout(lento); window.__messaggi++;
+    if (!(inCoda.length || (lavoro && eventi[0].t === 'anteprima'))) { document.body.classList.remove('attesa'); barra.classList.remove('on'); }
+  }
 }
 
 /* ---------------- applicazione dei pezzi di pagina ---------------- */
@@ -216,6 +259,8 @@ document.addEventListener('pointercancel', ev => fineTrascinamento(ev, true));
 document.addEventListener('click', ev => {
   if (mangiaClic) { mangiaClic = false; ev.preventDefault(); return; }
   if (!radiceDi(ev.target) || ev.target.closest('#landing, #dlgUtenti')) return;
+  const campo = ev.target.closest('input, textarea, select, label'), pop = document.getElementById('pop');
+  if (campo && pop.hidden && !(campo.tagName === 'INPUT' && /^(button|submit|reset|checkbox|radio)$/.test(campo.type))) return;
   ultimoClic = { x: ev.clientX, y: ev.clientY };
   const b = ev.target.closest('[data-a="collapseall"], [data-a="daycollapse"]');
   ancoraggio = b ? { ind: indirizzo(b), top: b.getBoundingClientRect().top } : null;
@@ -332,7 +377,7 @@ window.bootSede = v => {
   sb.channel('versioni-' + v.id).on('postgres_changes', { event: '*', schema: 'public', table: 'versioni', filter: 'carrozzeria_id=eq.' + v.id }, p => {
     if (p.new && p.new.versione <= C.versione) return; // è un nostro salvataggio, già mostrato
     clearTimeout(attesa);
-    attesa = setTimeout(function prova() { if (C.catena.length || inVolo) { attesa = setTimeout(prova, 1000); return; } invia({ t: 'aggiorna' }); }, 300);
+    attesa = setTimeout(function prova() { if (C.catena.length || occupato()) { attesa = setTimeout(prova, 1000); return; } invia({ t: 'aggiorna' }); }, 300);
   }).subscribe();
 };
 })();
