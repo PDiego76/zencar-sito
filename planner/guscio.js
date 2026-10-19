@@ -153,9 +153,12 @@ function aggiornaParte(p) {
       // - l'utente ha cambiato il campo dopo l'ultimo invio (la risposta porta un valore ormai vecchio), oppure
       // - il server non ha cambiato il campo. Altrimenti vale il valore del server (es. ore ricalcolate).
       const toccato = inviato.has(da) && inviato.get(da) !== statoCampo(da);
-      if (da.tagName === 'INPUT' && (da.type === 'checkbox' || da.type === 'radio')) { if (toccato || da.hasAttribute('checked') === a.hasAttribute('checked')) a.checked = da.checked; }
-      else if (da.tagName === 'INPUT' || da.tagName === 'TEXTAREA') { if (toccato || da.getAttribute('value') === a.getAttribute('value')) a.value = da.value; }
-      else if (da.tagName === 'SELECT') { const v = s => (s.querySelector('option[selected]') || {}).value; if (toccato || v(da) === v(a)) a.value = da.value; }
+      let tieni = true;
+      if (da.tagName === 'INPUT' && (da.type === 'checkbox' || da.type === 'radio')) { tieni = toccato || da.hasAttribute('checked') === a.hasAttribute('checked'); if (tieni) a.checked = da.checked; }
+      else if (da.tagName === 'INPUT' || da.tagName === 'TEXTAREA') { tieni = toccato || da.getAttribute('value') === a.getAttribute('value'); if (tieni) a.value = da.value; }
+      else if (da.tagName === 'SELECT') { const v = s => (s.querySelector('option[selected]') || {}).value; tieni = toccato || v(da) === v(a); if (tieni) a.value = da.value; }
+      // il campo ora mostra il valore del server (es. ore convertite in minuti): non è una scrittura dell'utente
+      if (!tieni) inviato.delete(da);
       if (da.tagName === 'DETAILS') da.open = a.hasAttribute('open');
       return true;
     }
