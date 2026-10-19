@@ -32,7 +32,7 @@ const Accesso = (() => {
     amministrazione: 'consulta, gestisce importi e copie; non modifica le vetture'
   };
   const PW_MIN = 10;
-  const S = { utente: null, voci: [], menu: null, modifica: null, msg: '', ok: '' };
+  const S = { utente: null, voci: [], menu: null, modifica: null, msg: '', ok: '', admin: false };
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const indirizzo = () => location.origin + location.pathname;
   const voce = id => S.voci.find(s => s.id === id);
@@ -56,6 +56,7 @@ const Accesso = (() => {
     if (/Password should be at least/i.test(m)) return 'La password deve avere almeno ' + PW_MIN + ' caratteri.';
     if (/should be different/i.test(m)) return 'La nuova password deve essere diversa da quella attuale.';
     if (/rate limit|too many/i.test(m)) return 'Troppi tentativi: riprova tra qualche minuto.';
+    if (/amministratore/i.test(m)) return 'L’amministratore non può cambiare ruolo né essere rimosso.';
     if (/carrozzerie_nome_unico|duplicate key/i.test(m)) return 'C’è già una carrozzeria con questo nome.';
     if (/Failed to fetch|NetworkError|Load failed|Connessione/i.test(m)) return 'Connessione non riuscita: controlla la rete e riprova.';
     if (/JWT|session/i.test(m)) return 'La sessione è scaduta: accedi di nuovo.';
@@ -109,8 +110,9 @@ const Accesso = (() => {
 
   /* ---------------------------------------------- elenco delle carrozzerie */
   async function caricaElenco() {
-    const { data, error } = await sb.from('membri').select('ruolo, carrozzerie(id, numero, nome, eliminata_il)').eq('user_id', S.utente.id);
+    const [{ data, error }, adm] = await Promise.all([sb.from('membri').select('ruolo, carrozzerie(id, numero, nome, eliminata_il)').eq('user_id', S.utente.id), sb.rpc('sono_amministratore')]);
     if (error) throw error;
+    S.admin = adm.data === true;
     S.voci = data.filter(r => r.carrozzerie).map(r => Object.assign({}, r.carrozzerie, { ruolo: r.ruolo }))
       .sort((a, b) => (a.numero ?? 1e9) - (b.numero ?? 1e9) || a.nome.localeCompare(b.nome, 'it'));
   }
@@ -132,7 +134,7 @@ const Accesso = (() => {
       if (S.modifica === s.id) return modifica(s.id, s.nome);
       const menu = S.menu === s.id ? `<div class="lmenu" role="menu"><button type="button" role="menuitem" data-ren="${s.id}">Rinomina</button>
         <button type="button" role="menuitem" data-utenti="${s.id}">Utenti</button><button type="button" role="menuitem" class="del" data-del="${s.id}">Elimina</button></div>` : '';
-      return `<div class="lcardi${s.id === last ? ' last' : ''}"><button type="button" class="lopen" data-sede="${s.id}">${esc(s.nome)}<small>${esc(RUOLI[s.ruolo])}${s.id === last ? ' · Ultima usata' : ''}</small></button>
+      return `<div class="lcardi${s.id === last ? ' last' : ''}"><button type="button" class="lopen" data-sede="${s.id}">${esc(s.nome)}<small>${esc(S.admin ? 'Amministratore' : RUOLI[s.ruolo])}${s.id === last ? ' · Ultima usata' : ''}</small></button>
         ${titolareDi(s) ? `<button type="button" class="lgear" data-menu="${s.id}" aria-haspopup="menu" aria-expanded="${S.menu === s.id}" aria-label="Impostazioni di ${esc(s.nome)}" title="Impostazioni">${GEAR}</button>${menu}` : ''}</div>`;
     };
     const puoAggiungere = S.voci.some(titolareDi);
@@ -248,8 +250,8 @@ const Accesso = (() => {
     const opzioni = r => Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${k === r ? ' selected' : ''}>${n}</option>`).join('');
     const righe = error ? `<p class="lerr">${esc(testoErrore(error))}</p>` : data.map(u => `<div class="riga"><span class="chi">${esc(u.email)}${u.user_id === S.utente.id ? ' (tu)' : ''}
         <small>${u.attivo ? 'Ha già effettuato l’accesso' : 'Invito in attesa: non ha ancora effettuato l’accesso'}</small></span>
-        <select data-ruolo="${u.user_id}" aria-label="Ruolo di ${esc(u.email)}">${opzioni(u.ruolo)}</select>
-        <button type="button" class="btn sm danger" data-rimuovi="${u.user_id}">Rimuovi</button></div>`).join('');
+        ${u.amministratore ? '<strong class="admin">Amministratore</strong>' : `<select data-ruolo="${u.user_id}" aria-label="Ruolo di ${esc(u.email)}">${opzioni(u.ruolo)}</select>
+        <button type="button" class="btn sm danger" data-rimuovi="${u.user_id}">Rimuovi</button>`}</div>`).join('');
     dlg.querySelector('.db').innerHTML = `${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
       <div>${righe}</div>
       <form class="invita" novalidate><label>Aggiungi una persona (email)<input type="email" name="email" maxlength="200" required autocomplete="off"></label>
@@ -263,7 +265,7 @@ const Accesso = (() => {
     if (!io && !ruolo && !confirm('Rimuovere questa persona dalla carrozzeria?')) return;
     const q = sb.from('membri');
     const { error } = ruolo ? await q.update({ ruolo }).eq('carrozzeria_id', c).eq('user_id', utenteId) : await q.delete().eq('carrozzeria_id', c).eq('user_id', utenteId);
-    if (error) return disegnaUtenti(/almeno un titolare/i.test(error.message) ? 'Ogni carrozzeria deve avere almeno un titolare.' : testoErrore(error));
+    if (error) return disegnaUtenti(/almeno un titolare/i.test(error.message) ? 'Ogni carrozzeria deve avere almeno un titolare.' : /amministratore/i.test(error.message) ? 'L’amministratore non può cambiare ruolo né essere rimosso.' : testoErrore(error));
     if (io) { dlg.close(); return aggiorna(); }
     disegnaUtenti('', ruolo ? 'Ruolo aggiornato.' : 'Persona rimossa.');
   }
