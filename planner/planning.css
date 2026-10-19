@@ -854,6 +854,8 @@ body.popmove,body.popmove *{cursor:move!important;user-select:none}
 .overview.ov2 .money .lbl small{font-size:12px;color:var(--warn,#9a6700)}
 .eurbtn{width:28px;height:28px;border-radius:50%;border:1px solid var(--tape,#B85A08);background:transparent;color:var(--tape,#B85A08);font-weight:700;font-size:14px;line-height:1;cursor:pointer;flex:0 0 auto;padding:0}
 .eurbtn:hover{background:var(--tape,#B85A08);color:#fff}
+.phtable input.calc[readonly]{background:transparent;border-color:transparent;box-shadow:none;color:var(--muted,#6b7178);font-weight:600;cursor:default;pointer-events:none}
+.phtable input.calc[readonly]::-webkit-inner-spin-button{display:none}
 .fsum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
 .fsum>div{border:1px solid var(--line,#d9dce0);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column}
 .fsum>div span{font-size:12px;color:var(--muted,#6b7178)}.fsum>div b{font-size:20px}.fsum>div small{font-size:12px;color:var(--muted,#6b7178)}
