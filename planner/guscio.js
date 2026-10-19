@@ -283,7 +283,8 @@ document.addEventListener('keydown', ev => {
   const t = document.activeElement && document.activeElement !== document.body ? document.activeElement : document.body;
   const scrive = t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
   const annulla = (ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === 'z';
-  if (scrive && !['Enter', 'Escape'].includes(ev.key) && !annulla) return;
+  if (ev.key === 'F12') ev.preventDefault();
+  if (scrive && !['Enter', 'Escape', 'F12'].includes(ev.key) && !annulla) return;
   if (['Shift', 'Control', 'Alt', 'Meta', 'Tab'].includes(ev.key)) return;
   if (t.closest && t.closest('.tabs button') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) ev.preventDefault();
   if (t.matches && t.matches('tr[data-car]') && (ev.key === 'Enter' || ev.key === ' ')) ev.preventDefault();
