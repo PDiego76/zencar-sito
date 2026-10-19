@@ -350,13 +350,17 @@ document.addEventListener('drop', ev => {
 
 /* ---------------- suggerimenti (icone «i») ---------------- */
 (() => {
-  const tip = document.createElement('div'); tip.id = 'infotip'; tip.setAttribute('role', 'tooltip'); tip.setAttribute('aria-hidden', 'true'); document.body.appendChild(tip);
+  const tip = document.createElement('div'); tip.id = 'infotip'; tip.setAttribute('role', 'tooltip'); tip.setAttribute('aria-hidden', 'true');
+  // «popover»: il fumetto sta nel livello più alto, sopra anche alle finestre aperte (altrimenti resterebbe dietro)
+  if (tip.showPopover) tip.setAttribute('popover', 'manual');
+  document.body.appendChild(tip);
+  const sopra = () => { if (!tip.showPopover) return; try { if (tip.matches(':popover-open')) tip.hidePopover(); tip.showPopover(); } catch (e) { } };
   let cur = null;
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const show = el => {
     cur = el; const t = el.dataset.tipT;
     tip.innerHTML = (t ? '<b>' + esc(t) + '</b>' : '') + esc(el.dataset.tip);
-    tip.className = ''; tip.style.left = '0px'; tip.style.top = '0px';
+    sopra(); tip.className = ''; tip.style.left = '0px'; tip.style.top = '0px';
     const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, cx = r.left + r.width / 2;
     const left = Math.max(8, Math.min(cx - w / 2, innerWidth - w - 8)), giu = r.bottom + 10 + h < innerHeight - 8 || r.top - 10 - h < 8;
     tip.style.left = left + 'px'; tip.style.top = (giu ? r.bottom + 10 : r.top - 10 - h) + 'px';
