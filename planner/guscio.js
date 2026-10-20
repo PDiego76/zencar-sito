@@ -15,7 +15,8 @@ let ultimoClic = { x: 200, y: 200 }, popPos = null, mangiaClic = false;
 window.__messaggi = 0; window.__inVolo = 0;
 
 /* ---------------- indirizzi degli elementi: radice (data-k), firma, numero d'ordine ---------------- */
-const firma = el => el.tagName.toLowerCase() + '|' + [...el.attributes].filter(a => !VOLATILI.has(a.name)).map(a => a.name + '=' + a.value).sort().join('|');
+// un class vuoto non conta (come sul server)
+const firma = el => el.tagName.toLowerCase() + '|' + [...el.attributes].filter(a => !VOLATILI.has(a.name) && !(a.name === 'class' && !a.value.trim())).map(a => a.name + '=' + a.value).sort().join('|');
 const radiceDi = el => { let r = el; while (r && r.parentElement && r.parentElement !== document.body) r = r.parentElement; return r && r.parentElement === document.body && r.dataset.k ? r : null; };
 function indirizzo(el) {
   const r = radiceDi(el); if (!r) return null;
@@ -223,6 +224,9 @@ document.addEventListener('pointerdown', ev => {
   if (s.matches('.pcard') && ev.target.closest('button, input, select, a')) return;
   tr = { s, giu: indirizzo(ev.target), x: ev.clientX, y: ev.clientY, on: false, sopra: null, sagoma: null };
 });
+// testo originale della riga dell'anteprima: torna com'era quando si lascia il giorno o si annulla il trascinamento
+const testoPv = new WeakMap();
+const ripristinaPv = c => { const pv = c && c.querySelector && c.querySelector('.pvw'); if (pv && testoPv.has(pv)) { pv.textContent = testoPv.get(pv); testoPv.delete(pv); } };
 document.addEventListener('pointermove', ev => {
   if (!tr) return;
   if (!tr.on) {
@@ -236,11 +240,11 @@ document.addEventListener('pointermove', ev => {
   tr.sagoma.style.left = ev.clientX + 10 + 'px'; tr.sagoma.style.top = ev.clientY + 6 + 'px';
   const t = document.elementFromPoint(ev.clientX, ev.clientY), c = t && t.closest('[data-day], [data-pday]');
   if (c !== tr.sopra) {
-    evidenzia(tr.sopra, false); tr.sopra = c; evidenzia(c, true);
+    evidenzia(tr.sopra, false); ripristinaPv(tr.sopra); tr.sopra = c; evidenzia(c, true);
     // parcheggio: la fine stimata per quel giorno la calcola il server
     const pv = c && c.matches('[data-pday]') && c.querySelector('.pvw');
     if (pv && tr.s.matches('.pcard')) {
-      const mio = tr; pv.textContent = 'Calcolo…';
+      const mio = tr; if (!testoPv.has(pv)) testoPv.set(pv, pv.textContent); pv.textContent = 'Calcolo…';
       invia({ t: 'anteprima', ind: tr.giu, sotto: indirizzo(c) }).then(x => { if (tr === mio && mio.sopra === c) pv.textContent = x || ''; });
     }
   }
@@ -250,7 +254,7 @@ document.addEventListener('pointermove', ev => {
 function fineTrascinamento(ev, annulla) {
   if (!tr) return;
   const t = tr; tr = null;
-  if (t.sagoma) t.sagoma.remove(); t.s.style.opacity = ''; evidenzia(t.sopra, false); document.body.classList.remove('dragmode');
+  if (t.sagoma) t.sagoma.remove(); t.s.style.opacity = ''; evidenzia(t.sopra, false); ripristinaPv(t.sopra); document.body.classList.remove('dragmode');
   if (!t.on) return;
   mangiaClic = true; setTimeout(() => { mangiaClic = false; }, 0);
   if (!annulla && t.sopra) invia({ t: 'trascina', ind: t.giu, sotto: indirizzo(t.sopra) });
