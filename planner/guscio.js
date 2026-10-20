@@ -330,14 +330,17 @@ async function estrai(file) {
     return { immagini };
   } catch (e) { return { errore: true }; }
 }
-async function mandaFile(f, scopo) {
+const MAX_BINARIO = 15 * 1024 * 1024;
+const comeBase64 = f => new Promise((ok, ko) => { const r = new FileReader(); r.onload = () => ok(String(r.result).replace(/^data:[^,]*,/, '')); r.onerror = ko; r.readAsDataURL(f); });
+async function mandaFile(f, scopo, binario) {
   const base = { t: 'file', scopo, nome: f.name, tipo: f.type, dimensione: f.size };
+  if (binario) { if (f.size > MAX_BINARIO) return mostraErrore('File troppo grande (massimo 15 MB).'); return invia(Object.assign(base, { dati: await comeBase64(f) })); }
   const doc = scopo === 'importa' && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name) || /^image\//.test(f.type));
   invia(Object.assign(base, doc ? { estratto: await estrai(f) } : { testo: await f.text() }));
 }
-function scegliFile({ accept, scopo }) {
+function scegliFile({ accept, scopo, binario }) {
   const i = document.createElement('input'); i.type = 'file'; i.accept = accept;
-  i.addEventListener('change', () => { const f = i.files && i.files[0]; if (f) mandaFile(f, scopo); });
+  i.addEventListener('change', () => { const f = i.files && i.files[0]; if (f) mandaFile(f, scopo, binario); });
   i.click();
 }
 // trascinare un file sulla zona di importazione equivale a sceglierlo

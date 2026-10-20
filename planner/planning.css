@@ -906,6 +906,18 @@ body.popmove,body.popmove *{cursor:move!important;user-select:none}
 #carForm .cv-note{margin-top:10px}
 #carForm .cv-sez{margin-bottom:6px}
 .cv-sw input{border:0;display:inline-block}.cv-sw input::before{display:none}
+.gr{width:15px;height:15px;vertical-align:-3px;margin-left:4px;color:#2F6FB2;fill:currentColor;flex:none;display:inline-block}
+.cv-r1{grid-template-columns:1.1fr 1.1fr 1.4fr auto}
+.cv-grs{margin-left:0;height:36px;color:var(--ink);white-space:nowrap;flex-direction:row}.cv-grs span{display:inline-flex;align-items:center;gap:3px}.cv-grs .gr{margin:0}
+#carForm .cv-ana .cv-sw input{height:20px;width:34px;flex:0 0 34px;padding:0}
+.cv-ana label.cv-grs{flex-direction:row;align-items:center;gap:8px}
+.ptags{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 6px}
+.tag.g{background:#e7ecf1;color:#52657a;border-color:transparent;margin-left:0}
+.tag.w{background:#fdf0dc;color:#8a5a00;border-color:transparent;margin-left:0}
+.sbbar.auto{border-left:3px solid var(--tape)}
+.job.autocar{display:inline-flex;align-items:center;gap:6px;cursor:default}.job.autocar .btn{height:28px;padding:0 10px}
+.panel.xls{margin-bottom:12px;border:1px solid var(--tape)}
+.xtab td,.xtab th{padding:5px 8px;white-space:nowrap}.xtab .n{text-align:right}.xtab tr.dup td{background:#fdf6ea}
 @media (max-width:820px){.cv-r1,.cv-r2,.cv-r3,.cv-tec,.cv-vg{grid-template-columns:1fr}}
 .fsum{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:10px 0}
 .fsum>div{border:1px solid var(--line,#d9dce0);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column}
