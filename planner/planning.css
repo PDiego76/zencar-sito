@@ -918,7 +918,8 @@ body.popmove,body.popmove *{cursor:move!important;user-select:none}
 #carForm .cv-ana .cv-sw input{height:20px;width:34px;flex:0 0 34px;padding:0}
 .cv-ana label.cv-grs{flex-direction:row;align-items:center;gap:8px}
 .grtag{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:999px;background:#e6eef8;color:#2F6FB2;font-size:12px;font-weight:600;white-space:nowrap}.grtag .gr{margin:0}
-.ptags{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 6px}
+/* etichette sotto la targa: sempre una per riga e due righe di spazio, così il resto della scheda resta allineato */
+.ptags{display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin:-2px 0 6px;min-height:46px}
 .tag.g{background:#e7ecf1;color:#52657a;border-color:transparent;margin-left:0}
 .tag.w{background:#fdf0dc;color:#8a5a00;border-color:transparent;margin-left:0}
 .sbbar.auto{border-left:3px solid var(--tape)}
