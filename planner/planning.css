@@ -1056,3 +1056,31 @@ kbd{display:inline-block;min-width:24px;padding:2px 7px;border:1px solid var(--g
 .week .day .achip .at b{font-size:13px;overflow:visible}
 .week .day .achip .at small{font-size:12px;text-align:right}
 .week .day .achip .an{position:static;justify-self:end}
+
+/* ================= Operai part time (2026-10-22): ore al giorno per operaio ================= */
+.ptag{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;box-sizing:border-box;width:64px;height:34px;margin-left:8px;padding:1px 4px;border-radius:6px;background:color-mix(in srgb,var(--tape) 12%,var(--surface));color:#9C4C06;font:700 12px/1.1 var(--f);white-space:nowrap;text-align:center;vertical-align:middle}
+.ptag b{font-weight:600}
+.ptag.vuoto{visibility:hidden}
+.wtable td:nth-child(2){white-space:nowrap}
+.wtable .split > span:first-child{display:inline-flex;align-items:center;gap:6px}
+.wtable input.wore{width:64px;text-align:right;font-variant-numeric:tabular-nums}
+
+/* ================= Meccanica (2026-10-22): fuori pianificazione, aiuta solo nei giorni confermati ================= */
+:root{--c-mec:#5f6f80}
+.mecline{margin-top:10px;font-size:13px;color:var(--muted)}
+.mecnote{display:inline-flex;align-items:center;height:32px;font-size:13px;font-weight:600;color:var(--muted)}
+.dayt tr.mec td{background:var(--surface-2)}
+.mecok{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border:1px solid #dcae86;border-radius:var(--rc);background:#fff8f2;font-size:14px;line-height:1.4;color:var(--ink);cursor:pointer}
+.mecok input{width:18px;height:18px;margin:1px 0 0;flex:none;accent-color:var(--tape)}
+
+/* ================= Rifinitura (2026-10-22) ================= */
+/* potenziale giornaliero: zone tonali dentro il pannello, non riquadri dentro un riquadro; pallino come nel resto */
+.panel .pot{background:var(--surface-2);border-color:transparent;box-shadow:none}
+.pot > span:first-child::before{width:12px;height:12px}
+
+/* ================= Testi lunghi (2026-10-22): nomi e modelli lunghi non allargano schede e finestre ================= */
+.sbbar .job{max-width:100%;min-width:0;flex-wrap:nowrap}
+.sbbar .job .ld{flex:0 0 12px}
+.sbbar .job > span:not(.ld){flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dayt td strong,.mecline,.mecok{overflow-wrap:anywhere}
+.dayt td:nth-child(2){white-space:nowrap}

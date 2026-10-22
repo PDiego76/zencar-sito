@@ -104,8 +104,8 @@ async function richiesta(eventi) {
     if (!r.ok || d.errore) { mostraErrore(d.errore || 'Operazione non riuscita (' + r.status + ').'); return; }
     C.primo = false; C.versione = Math.max(C.versione, d.versione || 0); C.uiBase = d.uiBase; C.catena = d.catena || []; C.imp = d.imp; C.annulla = d.annulla || null;
     try { sessionStorage.setItem('vista', JSON.stringify({ tab: d.ui.tab, view: d.ui.view, weekStart: d.ui.weekStart, month: d.ui.month })); } catch (e) { }
-    applica(d);
-  } catch (e) { mostraErrore('Connessione con il server non riuscita: riprova.'); }
+    togliErrore(); applica(d);
+  } catch (e) { mostraErrore('Connessione con il server non riuscita: l’ultima modifica potrebbe non essere stata salvata. Quando la connessione torna la pagina si aggiorna da sola.'); riprendi(); }
   finally {
     clearTimeout(lento); window.__messaggi++;
     if (!(inCoda.length || (lavoro && eventi[0].t === 'anteprima'))) { document.body.classList.remove('attesa'); barra.classList.remove('on'); }
@@ -185,7 +185,28 @@ function ascoltaDialogo(d) {
   // Esc chiude le finestre: lo decide il server, che gestisce le conseguenze (conferme, annullamenti)
   d.addEventListener('cancel', e => { e.preventDefault(); evento('chiudi', d); });
 }
-function mostraErrore(t) { const s = document.getElementById('saveState'); if (s) { s.textContent = t; s.classList.add('bad'); } else alert(t); }
+// rete caduta: appena torna, la pagina si ridisegna con i dati del server, così si vede cosa è stato salvato
+let daRiprendere = null;
+function riprendi() {
+  if (daRiprendere) return;
+  daRiprendere = setTimeout(function prova() {
+    daRiprendere = null;
+    if (!navigator.onLine || C.catena.length || occupato()) { daRiprendere = setTimeout(prova, 3000); return; }
+    invia({ t: 'aggiorna' });
+  }, 3000);
+}
+addEventListener('online', () => { if (daRiprendere) { clearTimeout(daRiprendere); daRiprendere = null; riprendi(); } });
+// il messaggio d'errore sostituisce lo stato del salvataggio; alla prima risposta buona torna il testo di prima
+let erroreMostrato = null;
+function mostraErrore(t) {
+  const s = document.getElementById('saveState'); if (!s) { alert(t); return; }
+  if (!erroreMostrato) erroreMostrato = { el: s, testo: s.textContent, bad: s.classList.contains('bad') };
+  s.textContent = t; s.classList.add('bad'); erroreMostrato.errore = t;
+}
+function togliErrore() {
+  const e = erroreMostrato; erroreMostrato = null; if (!e) return;
+  if (e.el.isConnected && e.el.textContent === e.errore) { e.el.textContent = e.testo; if (!e.bad) e.el.classList.remove('bad'); }
+}
 
 /* ---------------- riquadro: posizione e spostamento (solo schermo) ---------------- */
 function posizionaPop() {
@@ -278,7 +299,8 @@ document.addEventListener('change', ev => { if (radiceDi(ev.target) && ev.target
 const attesaInput = new Map();
 function svuotaInput() { for (const [el, t] of [...attesaInput]) { clearTimeout(t); attesaInput.delete(el); if (el.isConnected) evento('input', el); } aggiornaAttesa(); }
 document.addEventListener('input', ev => {
-  const el = ev.target; if (!radiceDi(el) || el.type === 'file') return;
+  // i campi segnati data-invio="change" partono solo con 'change', cioè quando si esce dal campo
+  const el = ev.target; if (!radiceDi(el) || el.type === 'file' || el.dataset.invio === 'change') return;
   clearTimeout(attesaInput.get(el)); attesaInput.set(el, setTimeout(() => { attesaInput.delete(el); evento('input', el); aggiornaAttesa(); }, 200)); aggiornaAttesa();
 });
 document.addEventListener('toggle', ev => { if (radiceDi(ev.target) && ev.target.tagName === 'DETAILS') evento('toggle', ev.target, { aperto: ev.target.open }); }, true);
