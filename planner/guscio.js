@@ -104,7 +104,7 @@ async function richiesta(eventi) {
     if (!r.ok || d.errore) { mostraErrore(d.errore || 'Operazione non riuscita (' + r.status + ').'); return; }
     C.primo = false; C.versione = Math.max(C.versione, d.versione || 0); C.uiBase = d.uiBase; C.catena = d.catena || []; C.imp = d.imp; C.annulla = d.annulla || null;
     try { sessionStorage.setItem('vista', JSON.stringify({ tab: d.ui.tab, view: d.ui.view, weekStart: d.ui.weekStart, month: d.ui.month })); } catch (e) { }
-    togliErrore(); applica(d);
+    togliErrore(); ultimaRisposta = Date.now(); applica(d);
   } catch (e) { mostraErrore('Connessione con il server non riuscita: l’ultima modifica potrebbe non essere stata salvata. Quando la connessione torna la pagina si aggiorna da sola.'); riprendi(); }
   finally {
     clearTimeout(lento); window.__messaggi++;
@@ -196,6 +196,18 @@ function riprendi() {
   }, 3000);
 }
 addEventListener('online', () => { if (daRiprendere) { clearTimeout(daRiprendere); daRiprendere = null; riprendi(); } });
+// aggiornamento periodico: ogni 15 minuti (o tornando sulla scheda dopo 15 minuti) la pagina si ridisegna con i dati
+// del server, ma solo se nessuna finestra è aperta, non si sta scrivendo in un campo e la scheda è visibile
+const OGNI = 15 * 60 * 1000;
+let ultimaRisposta = Date.now();
+function aggiornaSeFermo() {
+  if (!C.voce || document.visibilityState !== 'visible' || Date.now() - ultimaRisposta < OGNI) return;
+  const a = document.activeElement;
+  if (C.catena.length || occupato() || document.querySelector('dialog[open]') || (a && a.matches && a.matches('input, select, textarea'))) return;
+  ultimaRisposta = Date.now(); invia({ t: 'aggiorna' });
+}
+setInterval(aggiornaSeFermo, 60 * 1000);
+document.addEventListener('visibilitychange', aggiornaSeFermo);
 // il messaggio d'errore sostituisce lo stato del salvataggio; alla prima risposta buona torna il testo di prima
 let erroreMostrato = null;
 function mostraErrore(t) {

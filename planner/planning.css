@@ -1078,6 +1078,20 @@ kbd{display:inline-block;min-width:24px;padding:2px 7px;border:1px solid var(--g
 .panel .pot{background:var(--surface-2);border-color:transparent;box-shadow:none}
 .pot > span:first-child::before{width:12px;height:12px}
 
+/* ================= Bacheca: motivo del ritardo e ritardi previsti (2026-10-22) ================= */
+.bwhy{display:block;margin-top:3px;color:var(--ink)}
+.ritmot{margin:6px 0 2px;padding:7px 10px;border-radius:var(--rc);background:#fdf0ef;color:var(--ink);font-size:13px;line-height:1.4}
+.bprev{margin-top:14px}
+.bprev h4{margin:0 0 8px;font:700 14px var(--f);color:var(--ink)}
+.bitem.prev{border-left-width:1px;border-left-color:var(--line)}
+.bitem.prev + .bitem.prev{margin-top:8px}
+
+/* ================= Lavorazione esterna (2026-10-23) ================= */
+.estbox{margin:6px 0 2px;padding:7px 10px;border-radius:var(--rc);background:color-mix(in srgb,var(--c-mec) 12%,var(--surface));color:var(--ink);font-size:13px;line-height:1.4}
+.estfasi{margin:8px 0;padding:8px 10px;border-radius:var(--rc);background:var(--surface-2);font-size:14px;line-height:1.5}
+.sbbar.est .job.rientro{border-color:#dcae86!important;background:#fff8f2!important}
+.sbbar.est .job.rientro span:not(.ld){color:#9C4C06;font-weight:600}
+
 /* ================= Testi lunghi (2026-10-22): nomi e modelli lunghi non allargano schede e finestre ================= */
 .sbbar .job{max-width:100%;min-width:0;flex-wrap:nowrap}
 .sbbar .job .ld{flex:0 0 12px}
