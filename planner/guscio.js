@@ -121,7 +121,9 @@ function applica(m) {
     if (m.radice.fw) h.dataset.fw = m.radice.fw; else delete h.dataset.fw;
     if (m.radice.titolo) document.title = m.radice.titolo;
   }
+  cambiati = [];
   for (const p of m.parti || []) aggiornaParte(p);
+  accendi(cambiati); cambiati = null;
   if (m.prefs) for (const [k, v] of Object.entries(m.prefs)) try { localStorage.setItem(k, v); } catch (e) { }
   if (m.fuoco) { const el = trova(m.fuoco); if (el) { el.focus(); if (m.fuoco.seleziona && el.select) el.select(); } }
   if (m.scorri) { const el = trova(m.scorri); if (el) el.scrollIntoView({ block: m.scorri.blocco || 'start', inline: 'nearest' }); }
@@ -147,9 +149,14 @@ function aggiornaParte(p) {
   for (const [k, v] of Object.entries(p.attrs)) { if (k === 'open' || (k === 'style' && el.id === 'pop')) continue; if (el.getAttribute(k) !== v) el.setAttribute(k, v); }
   // valori dei campi: si aggiornano solo se il server li ha cambiati davvero (per esempio ore ricalcolate);
   // altrimenti resta quello che l'utente ha scritto, anche se nel frattempo è arrivata la risposta a una richiesta precedente
+  const nuova = !el.firstChild;
   morphdom(el, '<div>' + p.html + '</div>', {
     childrenOnly: true,
+    // un elemento nuovo conta una volta sola, non per ciascuno dei suoi figli
+    onNodeAdded: n => { if (cambiati && !nuova && n.nodeType === 1 && !cambiati.some(c => c.contains(n))) cambiati.push(n); return n; },
     onBeforeElUpdated: (da, a) => {
+      // testo cambiato in un elemento senza figli: si evidenzia dopo l'aggiornamento
+      if (cambiati && !nuova && !da.firstElementChild && !a.firstElementChild && da.textContent !== a.textContent) cambiati.push(da);
       // il valore dell'utente resta (il nuovo elemento lo riceve, così morphdom non lo tocca) se:
       // - l'utente ha cambiato il campo dopo l'ultimo invio (la risposta porta un valore ormai vecchio), oppure
       // - il server non ha cambiato il campo. Altrimenti vale il valore del server (es. ore ricalcolate).
@@ -178,6 +185,25 @@ function aggiornaParte(p) {
     else if (!('open' in p.attrs) && el.open) el.close();
   }
   if (el.id === 'pop' && !el.hidden && (eraNascosto || !el.style.left)) posizionaPop();
+}
+// ciò che una risposta ha cambiato (testi e elementi nuovi) si accende per un istante e poi sfuma, solo con
+// l'animazione dello stile: nessun attributo aggiunto. Se cambia molto (altra settimana, altra scheda, finestra che
+// si apre) o si sta scrivendo nella ricerca, niente evidenza: servirebbe solo a distrarre.
+let cambiati = null;
+const MAX_EVIDENZE = 10;
+function accendi(els) {
+  const att = document.activeElement;
+  if (att && att.matches('input, textarea') && !att.closest('dialog')) return;
+  const vis = els.filter(e => e.isConnected && !e.closest('header, [aria-live], [role="status"], .pghost') && e.getClientRects().length);
+  if (!vis.length || vis.length > MAX_EVIDENZE || !Element.prototype.animate) return;
+  // un blocco intero nuovo (altra scheda, sezione che compare) è un cambio di pagina, non un valore cambiato
+  if (vis.some(e => { const r = e.getBoundingClientRect(); return r.height > 96 || r.width * r.height > 90000; })) return;
+  const t = getComputedStyle(document.documentElement).getPropertyValue('--tape').trim() || '#B85A08';
+  const luce = 'color-mix(in srgb, ' + t + ' 30%, transparent)';
+  for (const e of vis) {
+    // acceso per un attimo, poi sfuma fino al colore normale dell'elemento (ultimo fotogramma implicito)
+    e.animate([{ backgroundColor: luce, boxShadow: '0 0 0 3px ' + luce, borderRadius: '4px', offset: 0 }, { backgroundColor: luce, boxShadow: '0 0 0 3px ' + luce, borderRadius: '4px', offset: 0.3, easing: 'ease-out' }], { duration: 1400 });
+  }
 }
 const ascoltati = new WeakSet(); // niente attributi aggiunti: la firma degli elementi deve restare uguale a quella del server
 function ascoltaDialogo(d) {

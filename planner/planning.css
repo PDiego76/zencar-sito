@@ -1124,3 +1124,19 @@ kbd{display:inline-block;min-width:24px;padding:2px 7px;border:1px solid var(--g
 .wtable thead th:last-child{border-radius:0 var(--rc) var(--rc) 0}
 /* blu molto scuro (lo stesso della barra del mese nel Parcheggio) al posto del grigio scuro #3b4046, scelto dal titolare il 2026-10-23 */
 :root{--navy:#172b43}
+/* movimento (2026-10-24): breve e senza attese. Finestre, riquadro della vettura e avviso «Annulla» entrano con una
+   dissolvenza da vicino; i cambi di stato (fase fatta, selezione, stato della vettura) sfumano invece di scattare.
+   Il guscio accende per un istante i valori che una risposta ha cambiato. */
+@keyframes entra-fin{from{opacity:0;transform:translateY(6px) scale(.985)}}
+@keyframes entra-pop{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+@keyframes entra-toast{from{opacity:0;transform:translate(-50%,10px)}}
+@keyframes sfondo-in{from{opacity:0}}
+dialog[open]{animation:entra-fin .22s cubic-bezier(.16,1,.3,1)}
+dialog[open]::backdrop{animation:sfondo-in .2s ease-out}
+#pop:not([hidden]){animation:entra-pop .16s cubic-bezier(.16,1,.3,1);transform-origin:top left}
+#undoToast:not([hidden]){animation:entra-toast .24s cubic-bezier(.16,1,.3,1)}
+.week .job{transition:filter .16s ease,opacity .16s ease,box-shadow .16s ease,background-color .2s ease,border-color .2s ease,color .2s ease}
+.status,.achip,.bitem,.vtab tbody tr{transition:background-color .2s ease,border-color .2s ease,color .2s ease}
+@media (prefers-reduced-motion: reduce){
+  dialog[open],#pop:not([hidden]),#undoToast:not([hidden]){animation:none}
+}
