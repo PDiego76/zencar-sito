@@ -1140,3 +1140,12 @@ dialog[open]::backdrop{animation:sfondo-in .2s ease-out}
 @media (prefers-reduced-motion: reduce){
   dialog[open],#pop:not([hidden]),#undoToast:not([hidden]){animation:none}
 }
+/* finestra «Non completata» (chiusura automatica): frasi su righe separate, campo delle ore senza scorrimento laterale */
+.nfbody{display:grid;gap:10px}
+.nfbody p{margin:0;line-height:1.5;max-width:60ch}
+.nfrow{display:grid;grid-template-columns:auto auto;justify-content:start;align-items:center;gap:6px 12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--rc);background:var(--surface-2);min-width:0}
+.nfrow label{font-weight:700}
+.nffld{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.nffld input{width:96px;height:36px;text-align:right;font-variant-numeric:tabular-nums}
+.nfprev{grid-column:1/-1;font-size:13px;color:var(--muted)}
+#dlg:has(.nfbody){width:min(520px,94vw);overflow-x:hidden}

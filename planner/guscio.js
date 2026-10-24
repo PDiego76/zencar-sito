@@ -149,7 +149,8 @@ function aggiornaParte(p) {
   for (const [k, v] of Object.entries(p.attrs)) { if (k === 'open' || (k === 'style' && el.id === 'pop')) continue; if (el.getAttribute(k) !== v) el.setAttribute(k, v); }
   // valori dei campi: si aggiornano solo se il server li ha cambiati davvero (per esempio ore ricalcolate);
   // altrimenti resta quello che l'utente ha scritto, anche se nel frattempo è arrivata la risposta a una richiesta precedente
-  const nuova = !el.firstChild;
+  // contenuto nuovo anche quando una finestra o il riquadro si aprono riusando l'elemento di prima: niente evidenza
+  const nuova = !el.firstChild || (el.tagName === 'DIALOG' && 'open' in p.attrs && !el.open) || (eraNascosto && !('hidden' in p.attrs));
   morphdom(el, '<div>' + p.html + '</div>', {
     childrenOnly: true,
     // un elemento nuovo conta una volta sola, non per ciascuno dei suoi figli
