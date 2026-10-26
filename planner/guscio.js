@@ -103,7 +103,7 @@ async function richiesta(eventi) {
     if (eventi[0].t === 'anteprima') return d.anteprima;
     if (!r.ok || d.errore) { mostraErrore(d.errore || 'Operazione non riuscita (' + r.status + ').'); return; }
     C.primo = false; C.versione = Math.max(C.versione, d.versione || 0); C.uiBase = d.uiBase; C.catena = d.catena || []; C.imp = d.imp; C.annulla = d.annulla || null;
-    try { sessionStorage.setItem('vista', JSON.stringify({ tab: d.ui.tab, view: d.ui.view, weekStart: d.ui.weekStart, month: d.ui.month })); } catch (e) { }
+    try { sessionStorage.setItem('vista', JSON.stringify({ tab: d.ui.tab, view: d.ui.view, weekStart: d.ui.weekStart, month: d.ui.month, parkWeek: d.ui.parkWeek, giorno: d.ui.giorno })); } catch (e) { }
     togliErrore(); ultimaRisposta = Date.now(); applica(d);
   } catch (e) { mostraErrore('Connessione con il server non riuscita: l’ultima modifica potrebbe non essere stata salvata. Quando la connessione torna la pagina si aggiorna da sola.'); riprendi(); }
   finally {
