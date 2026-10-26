@@ -437,8 +437,10 @@ document.addEventListener('drop', ev => {
   };
   const hide = () => { cur = null; tip.className = ''; tip.setAttribute('aria-hidden', 'true'); };
   document.addEventListener('mouseover', e => { const el = e.target.closest && e.target.closest('.info'); if (el && el !== cur) show(el); else if (!el && cur) hide(); });
-  document.addEventListener('focusin', e => { if (e.target.classList && e.target.classList.contains('info')) show(e.target); });
-  document.addEventListener('focusout', e => { if (e.target === cur) hide(); });
+  // anche da tastiera: arrivando su un comando descritto da un'icona «i» (aria-describedby) la spiegazione compare
+  const descritta = el => { const d = el && el.getAttribute && el.getAttribute('aria-describedby'), i = d && document.getElementById(d); return i && i.classList.contains('info') ? i : null; };
+  document.addEventListener('focusin', e => { if (e.target.classList && e.target.classList.contains('info')) show(e.target); else { const i = descritta(e.target); if (i && e.target.matches(':focus-visible')) show(i); } });
+  document.addEventListener('focusout', e => { if (e.target === cur || descritta(e.target) === cur) hide(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
   addEventListener('scroll', hide, true);
 })();
