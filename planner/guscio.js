@@ -351,6 +351,8 @@ document.addEventListener('keydown', ev => {
   if (ev.key === 'F12') ev.preventDefault();
   if (scrive && !['Enter', 'Escape', 'F12'].includes(ev.key) && !annulla) return;
   if (['Shift', 'Control', 'Alt', 'Meta', 'Tab'].includes(ev.key)) return;
+  // tasto I: spiegazioni «i» da tastiera, solo sullo schermo (vedi i suggerimenti più sotto): nessuna richiesta al server
+  if ((ev.key === 'i' || ev.key === 'I') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) return;
   if (t.closest && t.closest('.tabs button') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) ev.preventDefault();
   if (t.matches && t.matches('tr[data-car]') && (ev.key === 'Enter' || ev.key === ' ')) ev.preventDefault();
   if (annulla && !scrive) ev.preventDefault();
@@ -442,6 +444,23 @@ document.addEventListener('drop', ev => {
   document.addEventListener('focusin', e => { if (e.target.classList && e.target.classList.contains('info')) show(e.target); else { const i = descritta(e.target); if (i && e.target.matches(':focus-visible')) show(i); } });
   document.addEventListener('focusout', e => { if (e.target === cur || descritta(e.target) === cur) hide(); });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') hide(); });
+  // tasto I: le icone «i» non sono nel giro del Tab (sarebbero decine di fermate). Con I compare la spiegazione più vicina
+  // al comando attivo, prima di lui (o la prima visibile); premendo ancora, la successiva visibile sullo schermo.
+  document.addEventListener('keydown', e => {
+    if (!(e.key === 'i' || e.key === 'I') || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
+    const a = document.activeElement;
+    if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+    const dlg = document.querySelector('dialog[open]');
+    const visibile = el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.bottom > 0 && r.top < innerHeight; };
+    const icone = [...(dlg || document).querySelectorAll('.info[data-tip]')].filter(visibile);
+    if (!icone.length) return;
+    e.preventDefault();
+    let prossima;
+    if (cur && icone.includes(cur)) prossima = icone[(icone.indexOf(cur) + 1) % icone.length];
+    else if (a && a !== document.body) prossima = icone.filter(i => i.compareDocumentPosition(a) & Node.DOCUMENT_POSITION_FOLLOWING).pop() || icone[0];
+    else prossima = icone[0];
+    show(prossima);
+  });
   addEventListener('scroll', hide, true);
 })();
 
