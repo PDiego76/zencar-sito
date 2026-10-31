@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZenCar · Ogni vettura ha la sua data</title>
+<meta name="description" content="ZenCar pianifica la produzione della carrozzeria giorno per giorno e ti dice quando esce ogni vettura, prima che il cliente lo chieda.">
+<link rel="icon" href="zencar.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="nw/scrollcraft.css">
+<style>
+  /* identità del sito ZenCar (DESIGN.md, sezione sito): blu del marchio, Barlow Condensed + DM Sans */
+  :root {
+    --sc-canvas: #0B0D12; --sc-surface: #151823; --sc-ink: #F1F2F6; --sc-ink-soft: #A3A9B9;
+    --sc-accent: #4C5BFF; --sc-accent-ink: #FFFFFF;
+    --sc-font-display: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+    --sc-font-text: "DM Sans", system-ui, sans-serif;
+    --sc-shadow-color: 228 30% 4%;
+    --zs-paper: #F4F5F8; --zs-ink: #0B0D12; --zs-muted: #545B6B; --zs-line: #DADDE5; --zs-brand-deep: #3442D9;
+    --zs-ok: #2bb673; --zs-bad: #ff6b6b;
+  }
+  body { background: var(--sc-canvas); color: var(--sc-ink); font-family: var(--sc-font-text); }
+  .zs-num { font-variant-numeric: tabular-nums; }
+  #prova, #prezzo { scroll-margin-top: 68px; }
+
+  /* barra: marchio e una sola azione */
+  .zs-bar { position: fixed; inset: 0 0 auto 0; z-index: 60; display: flex; align-items: center; gap: 24px; height: 68px; padding: 0 clamp(16px, 4vw, 56px);
+    color: var(--sc-ink); }
+  .zs-bar::before { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(11,13,18,.72), rgba(11,13,18,0)); pointer-events: none; z-index: -1; }
+  .zs-logo { display: inline-flex; color: inherit; }
+  .zs-logo svg { height: 30px; width: auto; display: block; }
+  .zs-bar nav { margin-left: auto; display: flex; align-items: center; gap: 22px; font-size: 15px; }
+  .zs-bar nav a:not(.zs-cta) { color: var(--sc-ink); text-decoration: none; opacity: .86; }
+  .zs-bar nav a:not(.zs-cta):hover { opacity: 1; }
+  .zs-bar { transition: color .2s var(--sc-ease-out); }
+  .zs-bar::before { transition: background .2s var(--sc-ease-out); }
+  .zs-bar.chiara { color: var(--zs-ink); }
+  .zs-bar.chiara::before { background: rgba(244,245,248,.94); box-shadow: 0 1px 0 var(--zs-line); }
+  .zs-bar.chiara nav a:not(.zs-cta) { color: var(--zs-ink); }
+  .zs-cta { display: inline-flex; align-items: center; height: 44px; padding: 0 20px; border-radius: 999px; background: var(--sc-accent); color: var(--sc-accent-ink);
+    font-weight: 700; font-size: 15px; text-decoration: none; transition: background-color .16s var(--sc-ease-out), transform .12s var(--sc-ease-out); white-space: nowrap; }
+  .zs-cta:hover { background: var(--zs-brand-deep); color: var(--sc-accent-ink); } .zs-cta:active { transform: translateY(1px); }
+  .zs-ghost { display: inline-flex; align-items: center; height: 44px; padding: 0 18px; border-radius: 999px; border: 1px solid rgba(241,242,246,.42);
+    color: var(--sc-ink); font-weight: 700; font-size: 15px; text-decoration: none; }
+  .zs-ghost:hover { border-color: var(--sc-ink); }
+
+  /* ---------- 1 · apertura: officina vera, ogni vettura con la sua data ---------- */
+  .zs-hero { overflow: clip; }
+  .zs-hero__photo { position: absolute; inset: -4% -4% -4% -4%; background: #0B0D12;
+    transform: scale(calc(1.14 - .12 * var(--sc-p, 0))) translateY(calc(var(--sc-p, 0) * -2%)); transform-origin: 62% 55%; will-change: transform; }
+  .zs-hero__photo img { width: 100%; height: 100%; object-fit: cover; object-position: 58% 62%; display: block; }
+  .zs-hero__shade { position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(38% 34% at 92% 10%, rgba(11,13,18,.92) 0%, rgba(11,13,18,.55) 55%, rgba(11,13,18,0) 100%),
+                linear-gradient(90deg, rgba(11,13,18,.88) 0%, rgba(11,13,18,.62) 34%, rgba(11,13,18,0) 62%),
+                linear-gradient(0deg, rgba(11,13,18,.7) 0%, rgba(11,13,18,0) 30%); }
+  /* le etichette: piano davanti alla foto, salgono un po' più in fretta, compaiono una alla volta */
+  .zs-tags { position: absolute; inset: 0; pointer-events: none; transform: translateY(calc(var(--sc-p, 0) * -9vh)); }
+  .zs-tag { position: absolute; left: var(--x); top: var(--y); display: grid; grid-template-columns: auto auto; gap: 2px 10px; align-items: center;
+    padding: 10px 14px 10px 12px; border-radius: 14px; background: rgba(255,255,255,.96); color: var(--zs-ink); box-shadow: 0 10px 28px rgba(5,7,12,.38), 0 2px 6px rgba(5,7,12,.24);
+    font-size: 13px; line-height: 1.25; transform-origin: 0 100%;
+  }
+  .zs-tag::after { content: ""; position: absolute; left: 22px; bottom: -9px; width: 2px; height: 10px; background: rgba(255,255,255,.96); }
+  .zs-tag .p { grid-row: 1 / 3; display: inline-flex; align-items: center; height: 26px; padding: 0 8px; border: 1.5px solid #20262d; border-radius: 5px; font-weight: 700; letter-spacing: .05em; white-space: nowrap; }
+  .zs-tag b { font-size: 14px; }
+  .zs-tag span.s { display: inline-flex; align-items: center; gap: 6px; color: #3b4150; }
+  .zs-tag span.s::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c, #1f9d63); }
+  .zs-hero__copy { position: absolute; left: clamp(16px, 5vw, 80px); bottom: clamp(56px, 11vh, 120px); width: min(40rem, 88vw); display: grid; gap: 22px; }
+  .zs-hero__copy h1 { margin: 0; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(3.2rem, 1.8rem + 4.6vw, 6.4rem);
+    line-height: .9; letter-spacing: -0.01em; text-wrap: balance; }
+  .zs-hero__copy h1 em { font-style: normal; color: #9aa3ff; }
+  .zs-hero__copy p { margin: 0; font-size: clamp(17px, 1.3vw, 20px); line-height: 1.55; color: #d5d8e2; max-width: 34rem; }
+  .zs-hero__acts { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  /* ---------- 2 · il problema: la giornata di chi pianifica a memoria ---------- */
+  .zs-pain { position: relative; min-height: 100svh; display: grid; align-items: center; padding: clamp(5rem, 10vw, 8rem) clamp(16px, 6vw, 96px); background: #0B0D12; }
+  /* la foto è specchiata: la pistola sta a sinistra, il testo a destra sul fondo scuro */
+  .zs-pain__photo { position: absolute; inset: 0;
+    -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 40%, transparent 72%); mask-image: linear-gradient(90deg, #000 0%, #000 40%, transparent 72%); }
+  .zs-pain__photo img { width: 100%; height: 100%; object-fit: cover; object-position: 70% 40%; display: block; transform: scaleX(-1); filter: saturate(.7) brightness(.5); }
+  .zs-pain__lines { position: relative; justify-self: end; width: min(38rem, 100%); display: grid; gap: clamp(28px, 4vh, 44px); }
+  .zs-pain__lines > * { margin: 0; }
+  .zs-quote { font-family: var(--sc-font-display); font-weight: 700; text-transform: uppercase; font-size: clamp(1.9rem, 1.2rem + 1.9vw, 3rem); line-height: .95; letter-spacing: -0.005em; }
+  .zs-quote.turn { padding-top: clamp(20px, 3vh, 32px); border-top: 1px solid #262b3a; font-size: clamp(2.3rem, 1.4rem + 2.6vw, 3.8rem); }
+  .zs-quote small { display: block; margin-top: 14px; font-family: var(--sc-font-text); text-transform: none; font-weight: 400; font-size: 17px; line-height: 1.5; color: var(--sc-ink-soft); letter-spacing: 0; }
+  .zs-quote.turn { color: #9aa3ff; }
+
+  /* ---------- 3 · la svolta: dalla lavagna al planning ---------- */
+  .zs-turn { background: var(--zs-paper); color: var(--zs-ink); padding-block: clamp(4.5rem, 10vw, 9rem); }
+  .zs-turn .sc-wrap { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 64px); align-items: center; }
+  .zs-turn h2 { margin: 0; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(2.4rem, 1.5rem + 3vw, 4.4rem); line-height: .92; text-wrap: balance; }
+  .zs-turn p { margin: 0; font-size: 18px; line-height: 1.6; color: var(--zs-muted); max-width: 34rem; }
+  .zs-turn ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; }
+  .zs-turn li { display: grid; grid-template-columns: 26px 1fr; gap: 12px; font-size: 17px; line-height: 1.45; }
+  .zs-turn li::before { content: ""; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: var(--sc-accent)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/14px no-repeat; }
+  .zs-turn li b { color: var(--zs-ink); }
+  .zs-shot { position: relative; margin: 0; border-radius: 16px; overflow: hidden; background: #fff; box-shadow: 0 30px 60px -20px rgba(11,13,18,.35), 0 8px 18px rgba(11,13,18,.12); border: 1px solid var(--zs-line); }
+  .zs-shot__bar { display: flex; gap: 6px; padding: 10px 12px; background: #ECEEF3; border-bottom: 1px solid var(--zs-line); }
+  .zs-shot__bar i { width: 10px; height: 10px; border-radius: 50%; background: #c8ccd6; }
+  .zs-shot img { width: 100%; height: auto; display: block; }
+  .zs-shot figcaption { position: absolute; right: 12px; bottom: 12px; padding: 6px 10px; border-radius: 8px; background: rgba(11,13,18,.78); color: #fff; font-size: 12.5px; }
+  .zs-shot__crop { aspect-ratio: var(--ar); overflow: hidden; }
+  .zs-shot__crop img { width: 100%; height: 100%; object-fit: cover; object-position: left top; }
+
+  /* ---------- 4 · le altre schede: schermate ferme, una per riga ---------- */
+  .zs-tabs { background: var(--zs-paper); color: var(--zs-ink); padding-block: 0 clamp(4.5rem, 9vw, 8rem); }
+  .zs-tabs .sc-wrap { display: grid; gap: clamp(56px, 8vw, 104px); }
+  .zs-tab { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: clamp(24px, 4vw, 64px); align-items: center; }
+  .zs-tab:nth-child(even) { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); }
+  .zs-tab:nth-child(even) .zs-tab__text { order: 2; }
+  .zs-tab__text { display: grid; gap: 14px; }
+  /* la schermata Operai è larga: testo sopra, schermata a tutta larghezza */
+  .zs-tab.largo { grid-template-columns: minmax(0, 1fr); }
+  .zs-tab.largo .zs-tab__text { order: 0; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); column-gap: clamp(24px, 4vw, 64px); align-items: end; }
+  .zs-tab.largo .zs-tab__text .k { grid-column: 1 / -1; }
+  .zs-tab__text .k { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--zs-brand-deep); }
+  .zs-tab h3 { margin: 0; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(2rem, 1.4rem + 1.8vw, 3.1rem); line-height: .95; text-wrap: balance; }
+  .zs-tab p { margin: 0; font-size: 17px; line-height: 1.6; color: var(--zs-muted); max-width: 30rem; }
+
+  /* ---------- modulo di richiesta demo (mock-up: non invia nulla) ---------- */
+  .zs-modal { width: min(36rem, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 0; border: 0; border-radius: 18px; background: #fff; color: var(--zs-ink);
+    box-shadow: 0 40px 80px -20px rgba(5,7,12,.55); }
+  .zs-modal::backdrop { background: rgba(11,13,18,.62); }
+  .zs-modal form { display: grid; gap: 16px; padding: clamp(22px, 4vw, 36px); }
+  .zs-modal__head { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+  .zs-modal h2 { margin: 0; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: 2.2rem; line-height: .95; }
+  .zs-modal__lead { margin: 0; font-size: 16px; line-height: 1.55; color: var(--zs-muted); }
+  .zs-x { flex: none; width: 40px; height: 40px; border: 0; border-radius: 50%; background: #EEF0F4; color: var(--zs-ink); font-size: 22px; line-height: 1; cursor: pointer; }
+  .zs-x:hover { background: #E2E5EC; }
+  .zs-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .zs-f { display: grid; gap: 6px; font-size: 14px; font-weight: 500; }
+  .zs-f input, .zs-f select, .zs-f textarea { font: inherit; font-size: 16px; font-weight: 400; min-height: 44px; padding: 10px 12px; border: 1px solid #C9CEDA; border-radius: 10px;
+    background: #fff; color: var(--zs-ink); }
+  .zs-f textarea { min-height: 88px; resize: vertical; }
+  .zs-f :focus-visible, .zs-x:focus-visible, .zs-consent input:focus-visible { outline: 3px solid rgba(76,91,255,.45); outline-offset: 1px; border-color: var(--sc-accent); }
+  .zs-f [aria-invalid="true"] { border-color: #c0392b; }
+  .zs-f .err { color: #b3261e; font-size: 13px; font-weight: 400; }
+  .zs-f .err:empty { display: none; }
+  .zs-consent { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 14px; line-height: 1.45; color: var(--zs-muted); }
+  .zs-consent input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--sc-accent); }
+  .zs-hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .zs-modal .zs-cta { justify-self: start; border: 0; cursor: pointer; font-family: inherit; }
+  .zs-note { margin: 0; padding: 12px 14px; border-radius: 10px; background: #FFF6E0; color: #5c4300; font-size: 14px; line-height: 1.5; }
+  .zs-note:empty { display: none; }
+
+  .zs-k { font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--zs-brand-deep); }
+  .zs-todo { display: block; padding: 10px 12px; border-radius: 10px; background: #FFF6E0; color: #5c4300; font-size: 13.5px; line-height: 1.5; }
+
+  /* ---------- 4 · prova tu: il visitatore sceglie il giorno di ingresso ---------- */
+  .zs-try { --c-sr: #2f9e6b; --c-lat: #9a6ad6; --c-pv: #d08a1c; --c-luc: #d35a9c;
+    background: #10131B; color: var(--sc-ink); padding-block: clamp(4.5rem, 9vw, 8rem); }
+  .zs-try .sc-wrap { display: grid; gap: 28px; }
+  .zs-try .zs-k { color: #9aa3ff; }
+  .zs-try__head { display: grid; gap: 14px; max-width: 46rem; }
+  .zs-try h2 { margin: 0; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(2.4rem, 1.5rem + 3vw, 4.4rem); line-height: .92; text-wrap: balance; }
+  .zs-try__head p { margin: 0; font-size: 18px; line-height: 1.6; color: #c9cddb; }
+  .zs-panel { border: 1px solid #262b3a; border-radius: 16px; background: var(--sc-surface); }
+  .zs-car { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 24px; padding: 16px 20px; }
+  .zs-plate { display: inline-flex; align-items: center; height: 32px; padding: 0 10px; border-radius: 6px; background: #fff; color: #0B0D12; font-weight: 700; letter-spacing: .05em; white-space: nowrap; font-size: 15px; }
+  .zs-car__name { font-weight: 700; font-size: 17px; }
+  .zs-car__name span { display: block; font-weight: 400; font-size: 14.5px; color: var(--sc-ink-soft); }
+  .zs-car__ore { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-left: auto; font-size: 14.5px; color: #c9cddb; }
+  .zs-car__ore b { color: var(--sc-ink); }
+  .zs-dot { display: inline-block; width: 9px; height: 9px; margin-right: 6px; border-radius: 50%; background: var(--c); }
+  .zs-days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+  .zs-day { display: grid; gap: 6px; justify-items: start; min-height: 44px; padding: 14px 14px 16px; border: 1px solid #262b3a; border-radius: 14px; background: var(--sc-surface);
+    color: var(--sc-ink); font: inherit; text-align: left; cursor: pointer; transition: border-color .16s var(--sc-ease-out), background-color .16s var(--sc-ease-out); }
+  .zs-day:hover { border-color: #4a5170; }
+  .zs-day:focus-visible { outline: 3px solid rgba(154,163,255,.6); outline-offset: 2px; }
+  .zs-day[aria-pressed="true"] { border-color: var(--sc-accent); background: #1b2040; box-shadow: inset 0 0 0 1px var(--sc-accent); }
+  .zs-day .g { font-family: var(--sc-font-display); font-weight: 700; text-transform: uppercase; font-size: 22px; line-height: 1; }
+  .zs-day .f { font-size: 14.5px; color: #c9cddb; }
+  .zs-day .x { font-size: 13px; color: #ffc46b; min-height: 1.2em; }
+  .zs-st { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+  .zs-st::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .zs-st.ok { color: #5fd39b; } .zs-st.warn { color: #ffc46b; } .zs-st.bad { color: #ff8a8a; }
+  .zs-out { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 0; min-height: 13rem; }
+  .zs-out > * { padding: 22px 24px; }
+  .zs-out > * + * { border-left: 1px solid #262b3a; }
+  .zs-out__vuoto { grid-column: 1 / -1; display: grid; place-items: center; color: var(--sc-ink-soft); font-size: 16px; text-align: center; }
+  .zs-out .lbl { display: block; margin-bottom: 8px; font-size: 13px; color: var(--sc-ink-soft); }
+  .zs-out .fine { display: block; margin-bottom: 10px; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(1.9rem, 1.3rem + 1.6vw, 2.8rem); line-height: .95; }
+  .zs-out ul { margin: 0 0 18px; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .zs-out li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 15px; }
+  .zs-out li .zs-plate { height: 26px; font-size: 13px; }
+  .zs-out p { margin: 0 0 18px; font-size: 15px; color: #c9cddb; line-height: 1.5; }
+  .zs-line { display: grid; grid-template-columns: minmax(7.5rem, auto) repeat(6, minmax(0, 1fr)); gap: 4px; font-size: 13px; }
+  .zs-line .gh { color: var(--sc-ink-soft); text-align: center; padding-bottom: 2px; }
+  .zs-line .gh.cons { color: #ffc46b; font-weight: 700; }
+  .zs-line .rn { display: flex; align-items: center; color: #c9cddb; white-space: nowrap; }
+  .zs-line .cell { height: 28px; border-radius: 6px; background: #1b1f2c; display: grid; place-items: center; color: #0B0D12; font-weight: 700; }
+  .zs-line .cell.on { background: var(--c); }
+  .zs-try__note { margin: 0; font-size: 14px; line-height: 1.55; color: var(--sc-ink-soft); max-width: 60rem; }
+
+  /* ---------- 6 · abbonamento e domande ---------- */
+  .zs-price { background: var(--zs-paper); color: var(--zs-ink); padding-block: clamp(4.5rem, 9vw, 8rem); border-top: 1px solid var(--zs-line); }
+  .zs-price .sc-wrap { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(28px, 5vw, 72px); align-items: start; }
+  .zs-price h2 { margin: 0; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(2.2rem, 1.5rem + 2.4vw, 3.6rem); line-height: .92; }
+  .zs-card { display: grid; gap: 18px; padding: clamp(24px, 3vw, 36px); border-radius: 18px; background: #fff; border: 1px solid var(--zs-line); box-shadow: 0 24px 48px -24px rgba(11,13,18,.25); }
+  .zs-euro { font-family: var(--sc-font-display); font-weight: 800; font-size: clamp(3.6rem, 2.6rem + 3vw, 5.2rem); line-height: .9; }
+  .zs-euro small { display: block; margin-top: 8px; font-family: var(--sc-font-text); font-weight: 500; font-size: 16px; color: var(--zs-muted); }
+  .zs-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .zs-card li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; font-size: 16px; line-height: 1.45; }
+  .zs-card li::before { content: ""; width: 18px; height: 18px; margin-top: 2px; border-radius: 50%; background: var(--sc-accent)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l4 4 8-9' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat; }
+  .zs-card .zs-cta { justify-self: start; }
+  .zs-faq { display: grid; gap: 10px; }
+  .zs-faq h2 { margin-bottom: 10px; }
+  .zs-faq details { border: 1px solid var(--zs-line); border-radius: 14px; background: #fff; }
+  .zs-faq summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 52px; padding: 12px 18px; font-weight: 700; font-size: 16.5px; cursor: pointer; list-style: none; }
+  .zs-faq summary::-webkit-details-marker { display: none; }
+  .zs-faq summary::after { content: "+"; flex: none; font-size: 22px; font-weight: 400; color: var(--zs-muted); }
+  .zs-faq details[open] summary::after { content: "–"; }
+  .zs-faq summary:focus-visible { outline: 3px solid rgba(76,91,255,.45); outline-offset: 2px; border-radius: 14px; }
+  .zs-faq details p { margin: 0; padding: 0 18px 16px; font-size: 16px; line-height: 1.6; color: var(--zs-muted); }
+
+  /* ---------- 7 · chiusura: di nuovo l'officina, una sola azione ---------- */
+  .zs-close { position: relative; overflow: clip; padding-block: clamp(6rem, 14vw, 11rem) 0; background: #0B0D12; }
+  .zs-close__photo { position: absolute; inset: 0; }
+  .zs-close__photo img { width: 100%; height: 100%; object-fit: cover; object-position: 58% 62%; filter: saturate(.6) brightness(.38); }
+  .zs-close__photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(0deg, #0B0D12 0%, rgba(11,13,18,.2) 60%); }
+  .zs-close .sc-wrap { position: relative; display: grid; gap: 22px; }
+  .zs-close h2 { margin: 0; max-width: 16ch; font-family: var(--sc-font-display); font-weight: 800; text-transform: uppercase; font-size: clamp(2.8rem, 1.6rem + 4vw, 5.6rem); line-height: .9; text-wrap: balance; }
+  .zs-close h2 em { font-style: normal; color: #9aa3ff; }
+  .zs-close p { margin: 0; max-width: 36rem; font-size: 18px; line-height: 1.6; color: #d5d8e2; }
+  .zs-foot { position: relative; margin-top: clamp(4rem, 9vw, 7rem); border-top: 1px solid #262b3a; }
+  .zs-foot .sc-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 14px 28px; padding-block: 28px 36px; font-size: 14px; color: var(--sc-ink-soft); }
+  .zs-foot svg { height: 24px; width: auto; color: var(--sc-ink); }
+  .zs-foot a { color: inherit; }
+  .zs-foot .zs-todo { flex-basis: 100%; }
+
+  @media (max-width: 860px) {
+    .zs-bar nav a:not(.zs-cta) { display: none; }
+    .zs-hero__photo img { object-position: 64% 60%; }
+    .zs-hero__shade { background: linear-gradient(0deg, rgba(11,13,18,.92) 0%, rgba(11,13,18,.6) 44%, rgba(11,13,18,.05) 72%); }
+    .zs-tag { font-size: 12px; padding: 8px 10px; white-space: nowrap; } .zs-tag b { font-size: 13px; } .zs-tag span.s { display: none; } .zs-tag .p { grid-row: auto; }
+    .zs-tag.t1 { --x: 34% !important; } .zs-tag.t2 { --x: 22% !important; }
+    .zs-tag.t3 { display: none; }
+    .zs-hero__copy { bottom: 40px; gap: 16px; }
+    .zs-pain { padding: 46vh 16px 64px; align-items: start; }
+    .zs-pain__photo { inset: 0 0 auto 0; height: 58vh; -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%); mask-image: linear-gradient(180deg, #000 0%, #000 55%, transparent 100%); }
+    .zs-pain__lines { justify-self: stretch; }
+    .zs-turn .sc-wrap { grid-template-columns: minmax(0, 1fr); }
+    .zs-tab, .zs-tab:nth-child(even) { grid-template-columns: minmax(0, 1fr); }
+    .zs-tab:nth-child(even) .zs-tab__text, .zs-tab.largo .zs-tab__text { order: 0; grid-template-columns: minmax(0, 1fr); }
+    .zs-row { grid-template-columns: minmax(0, 1fr); }
+    .zs-pain__photo img { filter: saturate(.7) brightness(.68); }
+    .zs-shot figcaption { position: static; border-radius: 0; text-align: right; }
+    .zs-car__ore { margin-left: 0; }
+    .zs-days { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .zs-day { grid-template-columns: 5.5rem 1fr auto; align-items: center; gap: 4px 10px; padding: 12px 14px; }
+    .zs-day .x { grid-column: 2 / -1; min-height: 0; }
+    .zs-day .x:empty { display: none; }
+    .zs-out { grid-template-columns: minmax(0, 1fr); }
+    .zs-out > * + * { border-left: 0; border-top: 1px solid #262b3a; }
+    .zs-out > * { padding: 18px 16px; }
+    .zs-line { grid-template-columns: minmax(5.8rem, auto) repeat(6, minmax(0, 1fr)); font-size: 12px; }
+    .zs-price .sc-wrap { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .zs-hero__photo, .zs-tags { transform: none; }
+    .zs-tag { opacity: 1; transform: none; }
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="zc-logo" viewBox="0 0 407 110">
+    <g transform="scale(0.9166666666666666)"><rect x="10" y="10" width="46" height="46" rx="13" fill="#4C5BFF"/><rect x="64" y="10" width="46" height="46" rx="13" fill="#4C5BFF"/><rect x="10" y="64" width="46" height="46" rx="13" fill="#4C5BFF"/><circle cx="87" cy="87" r="21" fill="none" stroke="currentColor" stroke-width="8"/><circle cx="87" cy="87" r="5" fill="currentColor"/></g>
+    <path d="M136.268 84.82V75.41199999999999L165.92000000000002 34.67199999999999H137.528V25.179999999999993H179.192V34.58799999999999L149.288 75.32799999999999H180.2V84.82Z M203.552 85.82799999999999Q196.832 85.82799999999999 191.876 82.92999999999999Q186.92000000000002 80.032 184.23200000000003 74.74Q181.544 69.448 181.544 62.391999999999996Q181.544 55.33599999999999 184.23200000000003 50.04399999999999Q186.92000000000002 44.75199999999999 191.834 41.853999999999985Q196.748 38.95599999999999 203.3 38.95599999999999Q209.684 38.95599999999999 214.47199999999998 41.81199999999999Q219.26 44.66799999999999 221.906 50.04399999999999Q224.55200000000002 55.41999999999999 224.55200000000002 62.97999999999999V65.416H192.716Q192.968 71.29599999999999 195.90800000000002 74.27799999999999Q198.848 77.25999999999999 203.636 77.25999999999999Q210.94400000000002 77.25999999999999 212.96 71.044L223.964 71.716Q222.116 78.26799999999999 216.698 82.04799999999999Q211.28 85.82799999999999 203.552 85.82799999999999ZM192.716 58.19199999999999H213.464Q213.044 52.73199999999999 210.31400000000002 50.08599999999999Q207.584 47.43999999999999 203.3 47.43999999999999Q198.93200000000002 47.43999999999999 196.16000000000003 50.21199999999999Q193.388 52.983999999999995 192.716 58.19199999999999Z M229.59199999999998 84.82V39.96399999999999H239.33599999999998L239.588 47.60799999999999Q241.43599999999998 42.98799999999999 245.00599999999997 40.971999999999994Q248.576 38.95599999999999 253.028 38.95599999999999Q260.42 38.95599999999999 264.368 43.70199999999999Q268.316 48.44799999999999 268.316 56.007999999999996V84.82H257.56399999999996V59.45199999999999Q257.56399999999996 53.739999999999995 255.84199999999998 50.715999999999994Q254.12 47.69199999999999 249.75199999999998 47.69199999999999Q245.384 47.69199999999999 242.86399999999998 50.715999999999994Q240.344 53.739999999999995 240.344 59.45199999999999V84.82Z M301.24399999999997 86.16399999999999Q293.096 86.16399999999999 286.88 82.42599999999999Q280.664 78.68799999999999 277.13599999999997 71.75799999999998Q273.608 64.82799999999999 273.608 55.08399999999999Q273.608 45.50799999999999 277.052 38.493999999999986Q280.496 31.47999999999999 286.712 27.65799999999999Q292.928 23.83599999999999 301.328 23.83599999999999Q312.75199999999995 23.83599999999999 319.05199999999996 29.50599999999999Q325.352 35.17599999999999 327.284 45.33999999999999L315.86 45.92799999999999Q314.768 40.04799999999999 311.15599999999995 36.68799999999999Q307.544 33.32799999999999 301.328 33.32799999999999Q293.768 33.32799999999999 289.316 39.20799999999999Q284.864 45.087999999999994 284.864 55.08399999999999Q284.864 65.16399999999999 289.35799999999995 70.91799999999999Q293.852 76.672 301.24399999999997 76.672Q307.88 76.672 311.534 73.018Q315.188 69.36399999999999 316.19599999999997 62.97999999999999L327.62 63.56799999999999Q325.856 74.068 319.178 80.11599999999999Q312.5 86.16399999999999 301.24399999999997 86.16399999999999Z M345.51199999999994 85.82799999999999Q338.45599999999996 85.82799999999999 334.17199999999997 82.636Q329.888 79.44399999999999 329.888 73.564Q329.888 67.768 333.5 64.49199999999999Q337.11199999999997 61.215999999999994 344.50399999999996 59.788L359.37199999999996 56.84799999999999Q359.37199999999996 47.27199999999999 350.71999999999997 47.27199999999999Q346.856 47.27199999999999 344.58799999999997 49.07799999999999Q342.32 50.88399999999999 341.56399999999996 54.24399999999999L330.64399999999995 53.739999999999995Q331.98799999999994 46.68399999999999 337.19599999999997 42.81999999999999Q342.404 38.95599999999999 350.71999999999997 38.95599999999999Q360.296 38.95599999999999 365.21 43.78599999999999Q370.12399999999997 48.61599999999999 370.12399999999997 57.60399999999999V73.89999999999999Q370.12399999999997 75.66399999999999 370.75399999999996 76.33599999999998Q371.38399999999996 77.008 372.64399999999995 77.008H374.07199999999995V84.82Q372.64399999999995 85.15599999999999 370.12399999999997 85.15599999999999Q366.51199999999994 85.15599999999999 363.99199999999996 83.64399999999999Q361.472 82.13199999999999 360.79999999999995 78.01599999999999V77.93199999999999Q359.11999999999995 81.46 355.04599999999994 83.64399999999999Q350.972 85.82799999999999 345.51199999999994 85.82799999999999ZM347.69599999999997 78.01599999999999Q353.07199999999995 78.01599999999999 356.222 74.90799999999999Q359.37199999999996 71.8 359.37199999999996 66.67599999999999V64.15599999999999L347.78 66.508Q344.16799999999995 67.264 342.6139999999999 68.734Q341.05999999999995 70.204 341.05999999999995 72.556Q341.05999999999995 78.01599999999999 347.69599999999997 78.01599999999999Z M377.01199999999994 84.82V39.96399999999999H387.0919999999999L387.34399999999994 48.69999999999999Q388.68799999999993 44.16399999999999 391.2919999999999 42.06399999999999Q393.89599999999996 39.96399999999999 398.09599999999995 39.96399999999999H402.21199999999993V49.20399999999999H398.01199999999994Q392.8879999999999 49.20399999999999 390.3259999999999 51.513999999999996Q387.76399999999995 53.82399999999999 387.76399999999995 58.94799999999999V84.82Z" fill="currentColor"/>
+  </symbol></svg>
+
+<header class="zs-bar">
+  <a class="zs-logo" href="#top" aria-label="ZenCar, torna all’inizio"><svg viewBox="0 0 407 110" aria-hidden="true"><use href="#zc-logo"/></svg></a>
+  <nav aria-label="Principale">
+    <a href="#problema">Il problema</a>
+    <a href="#svolta">Come funziona</a>
+    <a href="#prova">Prova tu</a>
+    <a href="#prezzo">Prezzo</a>
+    <a class="zs-cta" href="#demo">Richiedi una demo</a>
+  </nav>
+</header>
+
+<main id="top">
+
+  <!-- 1 · APERTURA: tre piani (foto che si avvicina, etichette con la data appese alle vetture, promessa) -->
+  <section data-sc-act="pin" data-sc-span="1" class="zs-hero-act" aria-labelledby="t-hero">
+    <div data-sc-stage class="zs-hero">
+      <div class="zs-hero__photo" aria-hidden="true"><img src="nw/assets/officina.jpg" width="2400" height="1600" alt=""></div>
+      <div class="zs-hero__shade" aria-hidden="true"></div>
+      <div class="zs-tags" aria-hidden="true">
+        <div class="zs-tag t1" style="--x:57%;--y:16%;--t:.04"><span class="p">GH 482 TR</span><b>Pronta mercoledì</b><span class="s">In tempo per la consegna</span></div>
+        <div class="zs-tag t2" style="--x:47%;--y:37%;--t:.14;--c:#e0a300"><span class="p">FR 917 KL</span><b>Pronta giovedì</b><span class="s">Verniciatura domani</span></div>
+        <div class="zs-tag t3" style="--x:66%;--y:46%;--t:.24"><span class="p">EZ 205 PM</span><b>Pronta oggi, 16:00</b><span class="s">Lucidatura in corso</span></div>
+      </div>
+      <div class="zs-hero__copy">
+        <h1 id="t-hero">Ogni vettura ha la sua data. <em>E la rispetta.</em></h1>
+        <p>ZenCar pianifica la tua carrozzeria giorno per giorno e ti dice quando esce ogni vettura, prima che sia il cliente a chiederlo.</p>
+        <div class="zs-hero__acts"><a class="zs-cta" href="#demo">Richiedi una demo</a><a class="zs-ghost" href="#svolta">Come funziona</a></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · IL PROBLEMA: le frasi di ogni giorno, una alla volta; la foto resta da una parte -->
+  <section id="problema" aria-label="Il problema">
+    <div class="zs-pain">
+      <div class="zs-pain__photo" aria-hidden="true"><img src="nw/assets/verniciatura.jpg" width="2000" height="1333" alt=""></div>
+      <div class="zs-pain__lines">
+        <p class="zs-quote">«Quando è pronta la mia auto?»<small>La domanda che senti dieci volte al giorno, e a cui rispondi a sentimento.</small></p>
+        <p class="zs-quote">Il lattoniere oggi non c’è.<small>E a cascata slittano tre vetture. Ma lo scopri solo quando è tardi.</small></p>
+        <p class="zs-quote">La consegna era ieri.<small>Il cliente richiama, l’accettazione cerca la vettura sulla lavagna.</small></p>
+        <h2 class="zs-quote turn">Non serve lavorare di più. Serve saperlo prima.</h2>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 · LA SVOLTA: la lavagna diventa planning (tendina), con le tre cose che cambiano -->
+  <section id="svolta" class="sc-section zs-turn" data-sc-act="flow" aria-labelledby="t-svolta">
+    <div class="sc-wrap">
+      <div class="sc-stack">
+        <h2 id="t-svolta">Ragiona come il tuo capofficina. Non dimentica niente.</h2>
+        <p>Inserisci operai, ore e date di consegna. ZenCar fa il resto e si aggiorna da solo a ogni cambiamento.</p>
+        <ul>
+          <li><span><b>La data di uscita di ogni vettura</b>, calcolata reparto per reparto.</span></li>
+          <li><span><b>I ritardi prima che succedano</b>, ognuno con il suo motivo in una frase.</span></li>
+          <li><span><b>Il giorno di ingresso giusto</b>: vedi chi slitta prima di confermare.</span></li>
+        </ul>
+      </div>
+      <figure class="zs-shot">
+        <div class="zs-shot__bar" aria-hidden="true"><i></i><i></i><i></i></div>
+        <img src="nw/assets/calendario.png" width="1684" height="1240" alt="Il calendario di ZenCar: capacità per reparto, prima disponibilità per fase e lavorazioni di ogni giorno">
+        <figcaption>Schermata reale, dati di esempio</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- 4 · PROVA TU: il visitatore sceglie il giorno di ingresso e vede chi slitta (simulazione in pagina, dati di esempio) -->
+  <section id="prova" class="zs-try" aria-labelledby="t-prova">
+    <div class="sc-wrap">
+      <div class="zs-try__head">
+        <span class="zs-k">Prova tu</span>
+        <h2 id="t-prova">Scegli tu il giorno di ingresso.</h2>
+        <p>Una settimana di esempio: sei vetture già in lavorazione e un lattoniere assente mercoledì e giovedì. Arriva una Ford Puma da consegnare venerdì. In che giorno la fai entrare?</p>
+      </div>
+      <div class="zs-car zs-panel">
+        <span class="zs-plate">FY 640 TC</span>
+        <span class="zs-car__name">Ford Puma<span>consegna venerdì 6 novembre</span></span>
+        <span class="zs-car__ore" id="oreNuova"></span>
+      </div>
+      <div class="zs-days" id="giorniIngresso" role="group" aria-label="Giorno di ingresso della Ford Puma"></div>
+      <div class="zs-out zs-panel" id="effetto" aria-live="polite"><p class="zs-out__vuoto">Scegli un giorno qui sopra: vedi quando è pronta la Puma e quali vetture cambierebbero data.</p></div>
+      <p class="zs-try__note">Simulazione semplificata, calcolata in questa pagina con dati di esempio e con le regole che ZenCar dichiara: cinque fasi in ordine, capacità letta per reparto, al massimo 8 ore al giorno per vettura, precedenza alle urgenti e alle consegne più vicine. Il planning vero considera anche competenze secondarie, essiccazione e assenze di ogni operaio.</p>
+    </div>
+  </section>
+
+  <!-- 5 · LE ALTRE SCHEDE: schermate vere, ferme, nessun effetto -->
+  <section class="zs-tabs" aria-label="Le schede del planning">
+    <div class="sc-wrap">
+      <article class="zs-tab">
+        <div class="zs-tab__text">
+          <span class="k">Parcheggio</span>
+          <h3>Scegli il giorno di ingresso. Sai già quando esce.</h3>
+          <p>Per ogni giorno della settimana vedi le ore libere di ogni reparto, quante vetture sono in lavorazione e la data di fine della vettura che stai pianificando. Prima di confermare, ZenCar ti dice quali altre vetture cambierebbero data.</p>
+        </div>
+        <figure class="zs-shot">
+          <div class="zs-shot__bar" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="zs-shot__crop" style="--ar:1602/700"><img src="nw/assets/parcheggio.png" width="1602" height="748" alt="La scheda Parcheggio: per ogni giorno di ingresso, ore libere per reparto, vetture in lavorazione e data di fine prevista"></div>
+          <figcaption>Schermata reale, dati di esempio</figcaption>
+        </figure>
+      </article>
+      <article class="zs-tab largo">
+        <div class="zs-tab__text">
+          <span class="k">Operai</span>
+          <h3>La squadra com’è davvero.</h3>
+          <p>Per ogni operaio la competenza principale, quella che usa se serve e le ore al giorno, anche part time. ZenCar ne ricava il potenziale di ogni reparto, giorno per giorno, con assenze e straordinari.</p>
+        </div>
+        <figure class="zs-shot">
+          <div class="zs-shot__bar" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="zs-shot__crop" style="--ar:2600/1336"><img src="nw/assets/operai.png" width="2638" height="1336" alt="La scheda Operai: nome, competenza primaria e secondaria, ore al giorno e potenziale giornaliero di ogni reparto"></div>
+          <figcaption>Schermata reale, dati di esempio</figcaption>
+        </figure>
+      </article>
+      <article class="zs-tab">
+        <div class="zs-tab__text">
+          <span class="k">Bacheca</span>
+          <h3>Ogni ritardo con il suo perché.</h3>
+          <p>Le vetture pronte e le consegne a rischio, ogni mattina. Per ogni ritardo previsto ZenCar scrive il motivo in una frase e ti propone la nuova data, così chiami il cliente prima che chiami lui.</p>
+        </div>
+        <figure class="zs-shot">
+          <div class="zs-shot__bar" aria-hidden="true"><i></i><i></i><i></i></div>
+          <img src="nw/assets/bacheca.png" width="1518" height="776" alt="La Bacheca: due vetture in ritardo previsto, con la fine prevista, il motivo in una frase e il pulsante per posticipare la consegna">
+          <figcaption>Schermata reale, dati di esempio</figcaption>
+        </figure>
+      </article>
+    </div>
+  </section>
+
+  <!-- 6 · PREZZO: un prezzo, cosa comprende, le domande di prima -->
+  <section id="prezzo" class="zs-price" aria-labelledby="t-prezzo">
+    <div class="sc-wrap">
+      <div class="zs-card">
+        <span class="zs-k">Abbonamento</span>
+        <h2 id="t-prezzo">Un prezzo, tutto compreso.</h2>
+        <div class="zs-euro zs-num">€ 59<small>al mese per carrozzeria</small></div>
+        <ul>
+          <li>Calendario, Parcheggio, Bacheca e Operai</li>
+          <li>Lettura delle autorizzazioni in PDF</li>
+          <li>Utenti per titolare, accettazione, officina e amministrazione</li>
+          <li>Copia di sicurezza ogni notte, dati su server in Europa</li>
+          <li>Nel browser, senza installare niente</li>
+        </ul>
+        <span class="zs-todo">Mock-up, da completare prima della pubblicazione: IVA, durata minima, eventuale periodo di prova.</span>
+        <a class="zs-cta" href="#demo">Richiedi una demo</a>
+      </div>
+      <div class="zs-faq">
+        <h2>Prima di iniziare</h2>
+        <details><summary>Devo installare qualcosa?</summary><p>No. ZenCar si usa dal browser, con email e password. I dati stanno su server in Europa, a Francoforte.</p></details>
+        <details><summary>Come calcola le date di uscita?</summary><p>Con regole dichiarate: cinque fasi in ordine fisso, capacità letta per reparto, al massimo 8 ore al giorno per vettura e un ordine chiaro quando le ore non bastano (fasi fissate a mano, urgenti, consegna più vicina, ingresso più vecchio). Ogni data si può spiegare.</p></details>
+        <details><summary>Posso caricare le autorizzazioni che ricevo?</summary><p>Sì: carichi il PDF, anche scansionato, e ZenCar legge targa, modello, righe di lavoro e importo. Le ore vendute diventano ore tecniche per fase, con i coefficienti della tua officina.</p></details>
+        <details><summary>L’officina vede gli importi?</summary><p>No. L’officina consulta il planning e segna le fasi eseguite; gli importi li vedono titolare, accettazione e amministrazione.</p></details>
+        <details><summary>Abbiamo più sedi: come funziona?</summary><p>Ogni carrozzeria è separata, con i suoi operai, le sue vetture e i suoi utenti. Il titolare passa da una sede all’altra dalla pagina iniziale.</p></details>
+        <details><summary>E se un operaio è part time, o il meccanico ci dà una mano?</summary><p>Ogni operaio ha le sue ore al giorno, e il part time si vede subito. Il meccanico resta fuori dal planning e aiuta in carrozzeria solo nei giorni che confermi.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · CHIUSURA: di nuovo l'officina della prima schermata, una sola azione -->
+  <section id="demo" class="zs-close" aria-labelledby="t-demo">
+    <div class="zs-close__photo" aria-hidden="true"><img src="nw/assets/officina.jpg" width="2400" height="1600" alt="" loading="lazy"></div>
+    <div class="sc-wrap">
+      <span class="zs-k" style="color:#9aa3ff">Richiedi una demo</span>
+      <h2 id="t-demo">La tua prossima settimana, <em>già pianificata.</em></h2>
+      <p>Ti mostriamo ZenCar con i tuoi operai e le tue vetture. Ti ricontattiamo noi.</p>
+      <div><a class="zs-cta" href="#demo">Richiedi una demo</a></div>
+    </div>
+    <footer class="zs-foot">
+      <div class="sc-wrap">
+        <svg viewBox="0 0 407 110" aria-hidden="true"><use href="#zc-logo"/></svg>
+        <span>Pianificazione della produzione per carrozzerie</span>
+        <span>Foto: <a href="https://unsplash.com/photos/VdXnpwrp1qc">officina</a> (licenza Unsplash), <a href="https://www.pexels.com/photo/close-up-of-man-painting-car-details-14615263/">verniciatura</a> (licenza Pexels)</span>
+        <span class="zs-todo">Mock-up, da completare prima della pubblicazione: ragione sociale, sede, partita IVA, informativa privacy e cookie, contatti.</span>
+      </div>
+    </footer>
+  </section>
+
+  <!-- richiesta di demo: per ora NON è collegata a niente (nessun invio) -->
+  <dialog class="zs-modal" id="modulo-demo" aria-labelledby="t-modulo">
+    <form novalidate>
+      <div class="zs-modal__head">
+        <h2 id="t-modulo">Richiedi una demo</h2>
+        <button type="button" class="zs-x" data-chiudi aria-label="Chiudi">×</button>
+      </div>
+      <p class="zs-modal__lead">Ti mostriamo ZenCar con i dati della tua carrozzeria. Ti ricontattiamo noi.</p>
+      <div class="zs-row">
+        <label class="zs-f">Nome e cognome<input name="nome" autocomplete="name" required><span class="err"></span></label>
+        <label class="zs-f">Carrozzeria<input name="azienda" autocomplete="organization" required><span class="err"></span></label>
+      </div>
+      <div class="zs-row">
+        <label class="zs-f">Email<input name="email" type="email" autocomplete="email" required><span class="err"></span></label>
+        <label class="zs-f">Telefono (facoltativo)<input name="telefono" type="tel" autocomplete="tel"><span class="err"></span></label>
+      </div>
+      <label class="zs-f">Quanti operai?<select name="operai"><option value="">Scegli</option><option>Da 1 a 5</option><option>Da 6 a 10</option><option>Da 11 a 20</option><option>Più di 20</option></select><span class="err"></span></label>
+      <label class="zs-f">Messaggio (facoltativo)<textarea name="messaggio" rows="3"></textarea><span class="err"></span></label>
+      <label class="zs-hp" aria-hidden="true">Sito<input name="sito" tabindex="-1" autocomplete="off"></label>
+      <label class="zs-consent"><input type="checkbox" name="consenso"><span>Acconsento a essere ricontattato per la demo.</span></label>
+      <p class="zs-note" role="status"></p>
+      <button type="submit" class="zs-cta">Invia la richiesta</button>
+    </form>
+  </dialog>
+
+</main>
+
+<script src="nw/sim.js"></script>
+<script src="nw/scrollcraft.js"></script>
+<script>
+  // PROVA TU: settimana di esempio (targhe inventate), calcolata da sim.js; il visitatore sceglie il giorno di ingresso
+  (function () {
+    var S = window.ZenSim, G = S.GIORNI, F = S.FASI;
+    var COL = { sr: 'var(--c-sr)', lat: 'var(--c-lat)', pv: 'var(--c-pv)', luc: 'var(--c-luc)' };
+    // ore tecniche per fase [stacco, lattoneria, verniciatura, riattacco, lucidatura]; ingresso e consegna = indice del giorno
+    var V = [
+      { targa: 'EZ 205 PM', modello: 'Toyota Yaris', ore: [0.75, 0, 3.5, 0.75, 0.5], ingresso: 0, consegna: 1, urgente: true },
+      { targa: 'GH 482 TR', modello: 'Fiat 500', ore: [1.5, 4, 5, 1.5, 1], ingresso: 0, consegna: 3 },
+      { targa: 'FR 917 KL', modello: 'Volkswagen Golf', ore: [2, 6, 7, 3, 1.5], ingresso: 0, consegna: 4 },
+      { targa: 'GA 733 DS', modello: 'Audi A3', ore: [2.5, 10, 8.5, 2.5, 2], ingresso: 1, consegna: 5 },
+      { targa: 'FX 118 BN', modello: 'Peugeot 208', ore: [1, 3, 4.5, 1, 1], ingresso: 2, consegna: 4 },
+      { targa: 'GK 054 RV', modello: 'Jeep Renegade', ore: [3, 12, 9, 4, 2], ingresso: 2, consegna: 5 }
+    ];
+    var ASSENZA = [{ rep: 'lat', dal: 2, al: 3 }];
+    var NUOVA = { targa: 'FY 640 TC', modello: 'Ford Puma', ore: [1, 5, 4, 1.5, 1], consegna: 4 };
+    var GIORNI_SCELTA = 5, GIORNI_LINEA = 6;
+    var lungo = { Lun: 'lunedì', Mar: 'martedì', Mer: 'mercoledì', Gio: 'giovedì', Ven: 'venerdì' };
+    var ore = function (h) { return (Math.round(h * 4) / 4).toLocaleString('it-IT'); };
+    var breve = function (i) { return i == null ? 'oltre il 13 nov' : G[i].breve + ' nov'; };
+    var nomeLungo = function (i) { return i == null ? 'oltre il 13 novembre' : lungo[G[i].nome] + ' ' + G[i].num + ' novembre'; };
+    var statoDi = function (s) { return s.fine == null || s.ritardo ? ['bad', 'In ritardo'] : s.fine === NUOVA.consegna ? ['warn', 'Margine stretto'] : ['ok', 'In tempo']; };
+    var STIME = S.stime(V, ASSENZA, NUOVA).slice(0, GIORNI_SCELTA);
+
+    document.getElementById('oreNuova').innerHTML = F.map(function (f, i) {
+      return NUOVA.ore[i] ? '<span><i class="zs-dot" style="--c:' + COL[f.rep] + '"></i>' + f.nome + ' <b class="zs-num">' + ore(NUOVA.ore[i]) + ' h</b></span>' : '';
+    }).join('');
+    var giorni = document.getElementById('giorniIngresso'), eff = document.getElementById('effetto');
+    giorni.innerHTML = STIME.map(function (s, i) {
+      var st = statoDi(s), n = s.cambiano.length;
+      return '<button type="button" class="zs-day" data-g="' + i + '" aria-pressed="false" aria-label="Ingresso ' + nomeLungo(i) + ': pronta ' + nomeLungo(s.fine) + ', ' + st[1].toLowerCase() + (n ? ', ' + n + ' vettura cambia data' : '') + '">' +
+        '<span class="g">' + G[i].breve + '</span><span class="f zs-num">pronta ' + breve(s.fine) + '</span><span class="zs-st ' + st[0] + '">' + st[1] + '</span>' +
+        '<span class="x">' + (n ? (n === 1 ? '1 vettura cambia data' : n + ' vetture cambiano data') : '') + '</span></button>';
+    }).join('');
+    function scegli(i) {
+      giorni.querySelectorAll('.zs-day').forEach(function (b, k) { b.setAttribute('aria-pressed', k === i ? 'true' : 'false'); });
+      var s = STIME[i], st = statoDi(s), pv = s.piano.esito[NUOVA.targa];
+      var lista = s.cambiano.length ? '<ul>' + s.cambiano.map(function (c) {
+        var v = V.filter(function (x) { return x.targa === c.targa; })[0];
+        return '<li><span class="zs-plate">' + c.targa + '</span>' + v.modello + ' <span class="zs-num">da ' + breve(c.prima) + ' a <b>' + breve(c.dopo) + '</b></span><span class="zs-st ' + (c.ritardo ? 'bad' : 'ok') + '">' + (c.ritardo ? 'finirebbe in ritardo' : 'ancora in tempo') + '</span></li>';
+      }).join('') + '</ul>' : '<p>Nessun’altra vettura cambia data.</p>';
+      var riga = '<span></span>' + G.slice(0, GIORNI_LINEA).map(function (g) { return '<span class="gh zs-num' + (g.i === NUOVA.consegna ? ' cons' : '') + '">' + g.breve + '</span>'; }).join('');
+      F.forEach(function (f, fi) {
+        if (!NUOVA.ore[fi]) return;
+        riga += '<span class="rn"><i class="zs-dot" style="--c:' + COL[f.rep] + '"></i>' + f.nome + '</span>';
+        G.slice(0, GIORNI_LINEA).forEach(function (g) {
+          var hh = pv.blocchi.filter(function (x) { return x.g === g.i && x.fase === fi; }).reduce(function (a, x) { return a + x.h; }, 0);
+          riga += '<span class="cell' + (hh ? ' on zs-num' : '') + '" style="--c:' + COL[f.rep] + '">' + (hh ? ore(hh) : '') + '</span>';
+        });
+      });
+      eff.innerHTML = '<div><span class="lbl">Se entra ' + nomeLungo(i) + ', la Puma è pronta</span><b class="fine">' + nomeLungo(s.fine) + '</b><span class="zs-st ' + st[0] + '">' + st[1] + '</span></div>' +
+        '<div><span class="lbl">Vetture che cambierebbero data</span>' + lista +
+        '<span class="lbl">Le fasi della Puma, giorno per giorno (ore; in giallo il giorno di consegna)</span><div class="zs-line" role="img" aria-label="Fasi della Ford Puma giorno per giorno">' + riga + '</div></div>';
+    }
+    giorni.addEventListener('click', function (e) { var b = e.target.closest('.zs-day'); if (b) scegli(+b.dataset.g); });
+  })();
+</script>
+<script>
+  ScrollCraft.mount(document.body);
+  // la barra diventa chiara sopra le sezioni chiare
+  (function () { var bar = document.querySelector('.zs-bar'), chiare = document.querySelectorAll('.zs-turn, .zs-tabs, .zs-price');
+    function su() { var y = bar.offsetHeight / 2, c = false; chiare.forEach(function (s) { var r = s.getBoundingClientRect(); if (r.top <= y && r.bottom > y) c = true; }); bar.classList.toggle('chiara', c); }
+    addEventListener('scroll', su, { passive: true }); su(); })();
+  // «Richiedi una demo» apre il modulo; il modulo controlla i campi ma NON invia nulla (mock-up)
+  (function () {
+    var dlg = document.getElementById('modulo-demo'), form = dlg.querySelector('form'), nota = form.querySelector('.zs-note');
+    document.querySelectorAll('a[href="#demo"]').forEach(function (a) {
+      a.addEventListener('click', function (e) { e.preventDefault(); nota.textContent = ''; dlg.showModal(); form.nome.focus(); });
+    });
+    dlg.querySelector('[data-chiudi]').addEventListener('click', function () { dlg.close(); });
+    dlg.addEventListener('click', function (e) { if (e.target === dlg) dlg.close(); });
+    function errore(campo, testo) {
+      var err = campo.closest('.zs-f').querySelector('.err'); err.textContent = testo || '';
+      if (testo) campo.setAttribute('aria-invalid', 'true'); else campo.removeAttribute('aria-invalid');
+      return !testo;
+    }
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var ok = [
+        errore(form.nome, form.nome.value.trim() ? '' : 'Scrivi nome e cognome.'),
+        errore(form.azienda, form.azienda.value.trim() ? '' : 'Scrivi il nome della carrozzeria.'),
+        errore(form.email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.value.trim()) ? '' : 'Controlla l’indirizzo email.')
+      ];
+      var primo = form.querySelector('[aria-invalid="true"]');
+      if (primo) { nota.textContent = ''; primo.focus(); return; }
+      if (!form.consenso.checked) { nota.textContent = 'Serve il consenso per poterti ricontattare.'; form.consenso.focus(); return; }
+      nota.textContent = 'Modulo di prova: l’invio non è ancora attivo, nessun dato è stato inviato.';
+    });
+  })();
+</script>
+</body>
+</html>
