@@ -37,7 +37,7 @@ const Accesso = (() => {
   const indirizzo = () => location.origin + location.pathname;
   const voce = id => S.voci.find(s => s.id === id);
   const ultima = () => { try { return localStorage.getItem('planning-sede-ultima') || ''; } catch (e) { return ''; } };
-  let box = null, dlg = null;
+  let box = null, dlg = null, larghezzaGestore = 0;
 
   function pagina() {
     if (!box) {
@@ -45,6 +45,8 @@ const Accesso = (() => {
       document.body.appendChild(box);
       box.addEventListener('click', clic); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
       box.addEventListener('keydown', tasti);
+      // Gestore: se la finestra cambia molto di larghezza si richiede la pagina, con le settimane in fasce che entrano
+      let attesa = 0; addEventListener('resize', () => { clearTimeout(attesa); attesa = setTimeout(() => { if (box.querySelector('.gestore .gs-gruppo') && !box.querySelector('.gs-form') && Math.abs(box.clientWidth - larghezzaGestore) > 60) apriGestore(); }, 400); });
       box.addEventListener('change', ev => { const x = ev.target.closest('[data-gs-sett]'); if (x) { try { localStorage.setItem('planning-gestore-settimane', x.value); } catch (e) { } apriGestore(); } });
     }
     return box;
@@ -226,7 +228,8 @@ const Accesso = (() => {
     else b.innerHTML = '<div class="lcard gestore"><div class="lhead"><h1>Gestore</h1><p>Calcolo della saturazione di tutte le carrozzerie…</p></div></div>';
     try {
       // ora: solo l'orologio fisso delle prove (il server la accetta solo in locale, con CONSENTI_ORA_FINTA)
-      const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, ora: window.__ORA_FINTA || null }, extra));
+      // larghezza: solo per dividere le settimane in fasce che entrano nella pagina
+      const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, larghezza: (larghezzaGestore = b.clientWidth), ora: window.__ORA_FINTA || null }, extra));
       b.innerHTML = r.html;
       const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus();
     } catch (e) { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }

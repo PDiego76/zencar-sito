@@ -36,7 +36,7 @@ body.attesa { cursor: progress; }
 #landing .lbtn { display: inline-flex; gap: 8px; }
 #landing .gestore-btn { height: 32px; padding: 0 14px; border-radius: 6px; border: 1px solid var(--navy); background: var(--navy); color: #fff; font: 600 13px var(--f, system-ui); cursor: pointer; }
 #landing .gestore-btn:hover { background: color-mix(in srgb, var(--navy) 86%, #fff); }
-#landing .lcard.gestore { width: min(1440px, 100%); --gs-l0: #e4ebf2; --gs-l1: #a9c9ea; --gs-l2: #f0b35a; --gs-l3: #9f2a2a; }
+#landing .lcard.gestore { width: min(1880px, 100%); --gs-l0: #e4ebf2; --gs-l1: #a9c9ea; --gs-l2: #f0b35a; --gs-l3: #9f2a2a; }
 #landing .gestore[aria-busy="true"] .gs-gruppo { opacity: .55; transition: opacity .15s; }
 #landing .gs-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: stretch; }
 #landing .gs-ctl { display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 8px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
@@ -66,12 +66,14 @@ body.attesa { cursor: progress; }
 #landing .gs-gruppo > header { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
 #landing .gs-gruppo h2 { margin: 0; font-size: 18px; }
 #landing .gs-gruppo .gs-azioni { margin-left: auto; display: flex; gap: 6px; }
-#landing .gs-scorre { overflow-x: auto; }
+/* la mappa entra nel riquadro: le colonne si stringono; lo scorrimento resta solo come ultima risorsa (schermi stretti) */
+#landing .gs-scorre { overflow-x: auto; overflow-y: hidden; }
 #landing .gs-mappa { display: grid; gap: 3px; font-size: 13px; min-width: min-content; }
 #landing .gs-h0 { grid-row: span 2; align-self: end; padding: 0 6px 6px; font-weight: 600; color: var(--muted); }
-#landing .gs-hw { padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-weight: 700; font-size: 13px; white-space: nowrap; }
+#landing .gs-hw { padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-weight: 700; font-size: 13px; min-width: 0; line-height: 1.3; }
+#landing .gs-hw span { white-space: nowrap; }
 #landing .gs-hw span { font-weight: 400; color: var(--muted); }
-#landing .gs-hr { display: flex; align-items: center; gap: 5px; padding: 2px 4px 6px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; }
+#landing .gs-hr { display: flex; align-items: center; gap: 4px; padding: 2px 2px 6px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 #landing .gs-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
 #landing .gs-r { display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 4px 8px; min-height: 46px; border-top: 1px solid var(--grid); min-width: 0; }
 #landing .gs-r small { font-size: 12px; color: var(--muted); }
@@ -80,7 +82,7 @@ body.attesa { cursor: progress; }
 #landing .gs-nome:hover { text-decoration: underline; text-decoration-color: var(--tape); text-underline-offset: 3px; }
 #landing .gs-nome:focus-visible { outline: 2px solid var(--tape); outline-offset: 2px; border-radius: 4px; }
 #landing .gs-c { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 46px; border-radius: 5px; font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--ink); line-height: 1.15; }
-#landing .gs-c small { font-size: 12px; font-weight: 700; }
+#landing .gs-c small { font-size: 12px; font-weight: 700; white-space: nowrap; }
 #landing .gs-poco { font-size: 12px; }
 #landing .gs-c.lv { background: var(--surface-2); color: var(--muted); font-weight: 400; }
 #landing .gs-c.l0 { background: var(--gs-l0); font-weight: 500; }
@@ -92,6 +94,11 @@ body.attesa { cursor: progress; }
 /* il rettangolo del totale del gruppo: stessa griglia delle righe, incorniciato */
 #landing .gs-tot { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; gap: 3px; margin-top: 6px; padding: 4px 0; border: 2px solid var(--navy); border-radius: 8px; background: var(--surface-2); }
 #landing .gs-tot .gs-r { border-top: 0; }
+/* linea verticale tra una settimana e l'altra: le colonne di ogni settimana si leggono come un blocco */
+#landing .gs-sep { position: relative; }
+#landing .gs-sep::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: 0; width: 2px; margin-left: -1px; background: var(--navy); opacity: .45; }
+#landing .gs-sep-h { grid-row: span 2; }
+#landing .gs-sep-h::before { top: 2px; }
 #landing .gs-sugg { display: grid; gap: 8px; padding: 12px 16px; border-radius: 8px; background: var(--tape-soft); border: 1px solid var(--tape-line); }
 #landing .gs-sugg h3 { margin: 0; font-size: 15px; }
 #landing .gs-sugg ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 14px; line-height: 1.5; }
