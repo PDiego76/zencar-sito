@@ -43,8 +43,9 @@ const Accesso = (() => {
     if (!box) {
       box = document.createElement('div'); box.id = 'landing'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Scegli la carrozzeria');
       document.body.appendChild(box);
-      box.addEventListener('click', clic); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); });
+      box.addEventListener('click', clic); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
       box.addEventListener('keydown', tasti);
+      box.addEventListener('change', ev => { const x = ev.target.closest('[data-gs-sett]'); if (x) { try { localStorage.setItem('planning-gestore-settimane', x.value); } catch (e) { } apriGestore(); } });
     }
     return box;
   }
@@ -141,7 +142,7 @@ const Accesso = (() => {
     const nuova = S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (puoAggiungere ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
     const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s));
     return `<div class="lcard"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>Scegli la carrozzeria: ognuna ha operai, vetture e impostazioni separati.</p></div>
-      <div class="lbar"><span>Accesso come <strong>${esc(S.utente.email)}</strong></span><button type="button" class="esci" data-esci="1">Esci</button></div>
+      <div class="lbar"><span>Accesso come <strong>${esc(S.utente.email)}</strong></span><span class="lbtn">${puoAggiungere ? '<button type="button" class="gestore-btn" data-gestore="1">Gestore</button>' : ''}<button type="button" class="esci" data-esci="1">Esci</button></span></div>
       ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}
       ${vive().length || nuova ? `<div class="lgrid">${vive().map(card).join('')}${nuova}</div>`
         : '<p class="lnote">Non hai ancora accesso a nessuna carrozzeria: chiedi al titolare di aggiungerti.</p>'}
@@ -177,6 +178,9 @@ const Accesso = (() => {
     const t = ev.target.closest('button');
     if (!t) { if (S.menu) { S.menu = null; mostraElenco(); } return; }
     if (t.dataset.esci) { await sb.auth.signOut(); S.utente = null; return mostraAccesso(); }
+    if (t.dataset.gestore) return apriGestore();
+    if (t.dataset.gs) { if (t.dataset.gsConferma && !confirm(t.dataset.gsConferma)) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
+    if (t.dataset.gsChiudi) return mostraElenco('[data-gestore]');
     S.msg = ''; S.ok = '';
     if (t.dataset.menu) { const id = t.dataset.menu; S.menu = S.menu === id ? null : id; return mostraElenco(S.menu ? `.lmenu [data-ren="${id}"]` : `[data-menu="${id}"]`); }
     S.menu = null;
@@ -212,6 +216,28 @@ const Accesso = (() => {
       if (ev.key === 'Escape') { ev.preventDefault(); S.modifica = null; mostraElenco(); }
     } else if (ev.key === 'Escape' && S.menu) { const id = S.menu; S.menu = null; mostraElenco(`[data-menu="${id}"]`); }
     ev.stopPropagation(); // le scorciatoie del planning restano spente
+  }
+
+  /* ---------------------------------------------- gestore: cruscotto di tutte le carrozzerie (pagina preparata dal server) */
+  async function apriGestore(extra = {}) {
+    let n = 2; try { n = +localStorage.getItem('planning-gestore-settimane') || 2; } catch (e) { }
+    const b = pagina(), prima = b.querySelector('.gestore');
+    if (prima) prima.setAttribute('aria-busy', 'true');
+    else b.innerHTML = '<div class="lcard gestore"><div class="lhead"><h1>Gestore</h1><p>Calcolo della saturazione di tutte le carrozzerie…</p></div></div>';
+    try {
+      // ora: solo l'orologio fisso delle prove (il server la accetta solo in locale, con CONSENTI_ORA_FINTA)
+      const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, ora: window.__ORA_FINTA || null }, extra));
+      b.innerHTML = r.html;
+      const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus();
+    } catch (e) { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }
+  }
+
+  /** Modulo del gestore: tutti i campi così come sono (i ripetuti come elenco), li controlla il server. */
+  function inviaGestore(form) {
+    const campi = {};
+    for (const [k, v] of new FormData(form)) campi[k] = k in campi ? [].concat(campi[k], v) : v;
+    form.querySelectorAll('button').forEach(x => { x.disabled = true; });
+    return apriGestore({ azione: form.dataset.gs, id: form.dataset.gsId || '', campi });
   }
 
   /** Apre il planning della carrozzeria scelta. */
