@@ -1198,3 +1198,15 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape);outline-offs
 .week .job:not(.line)>span:not(.jt):not(.h)::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--c);margin-right:6px;vertical-align:-1px}
 /* polish 2026-10-26: testo minimo 12 px anche nella vista Carico mese e nella fine stimata del Parcheggio */
 .lk,.lt,.park-month .pvw{font-size:12px}
+/* riquadri sopra il calendario (2026-11-03, richiesta del titolare): il titolo sulla sua riga, la spiegazione come nota in basso */
+.sbbar h3{flex-basis:100%;margin:0 0 2px}
+.sbfoot{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:4px;padding-top:10px;border-top:1px solid var(--line)}
+.sbfoot .btn{margin-left:auto}
+/* «Non completata» di una vettura da confermare: in quale fase si è fermato il lavoro */
+.nffasi{margin:0;padding:0;border:0;display:grid;gap:6px;min-width:0}
+.nffasi legend{font-weight:700;padding:0 0 6px}
+.nfopt{display:grid;grid-template-columns:18px 12px auto 1fr;align-items:center;gap:10px;min-height:40px;padding:6px 12px;border:1px solid var(--line);border-radius:var(--rc);background:var(--surface);cursor:pointer;font-weight:600}
+.nfopt.on{background:var(--tape-soft);border-color:var(--tape)}
+.nfopt input{margin:0;width:18px;height:18px;accent-color:var(--tape)}
+.nfopt .ld{background:var(--c)}
+.nfopt .small{font-weight:400;justify-self:end}
