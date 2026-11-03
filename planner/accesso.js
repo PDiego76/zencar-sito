@@ -43,9 +43,15 @@ const Accesso = (() => {
 
   function pagina() {
     if (!box) {
-      box = document.createElement('div'); box.id = 'landing'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Scegli la carrozzeria');
+      box = document.createElement('div'); box.id = 'landing'; box.setAttribute('role', 'region'); box.setAttribute('aria-label', 'Pianificazione Carrozzeria');
       document.body.appendChild(box);
-      box.addEventListener('click', clic); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
+      box.addEventListener('click', clic);
+      // Gestore: le ore di una cella, passando sopra con il mouse o selezionandola (clic, tocco, tastiera)
+      box.addEventListener('mouseover', ev => { const c = ev.target.closest('[data-gs-info]'); if (c) mostraInfo(c); });
+      box.addEventListener('mouseout', ev => { const c = ev.target.closest('[data-gs-info]'); if (c && !c.contains(ev.relatedTarget) && document.activeElement !== c) nascondiInfo(); });
+      box.addEventListener('focusin', ev => { const c = ev.target.closest('[data-gs-info]'); if (c) mostraInfo(c); else nascondiInfo(); });
+      box.addEventListener('focusout', ev => { if (ev.target.closest('[data-gs-info]')) nascondiInfo(); });
+      box.addEventListener('scroll', () => nascondiInfo(), true); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
       box.addEventListener('keydown', tasti);
       // Gestore: dati riletti ogni 10 minuti mentre è aperto (e al ritorno su una scheda rimasta nascosta)
       const gestoreVecchio = () => box && box.querySelector('.gestore .gs-head') && !box.querySelector('.gs-form') && Date.now() - lettoGestore >= ogniGestore();
@@ -56,6 +62,32 @@ const Accesso = (() => {
       box.addEventListener('change', ev => { const x = ev.target.closest('[data-gs-sett]'); if (x) { try { localStorage.setItem('planning-gestore-settimane', x.value); } catch (e) { } apriGestore(); } });
     }
     return box;
+  }
+  /** Nome della zona per il lettore di schermo, secondo quello che mostra. */
+  const vista = nome => { pagina().setAttribute('aria-label', nome); return box; };
+
+  /* Gestore: riquadro con le ore della cella (blu notte come i suggerimenti «i»); il testo lo prepara il server */
+  let info = null, infoDi = null;
+  function mostraInfo(c) {
+    if (!info) { info = document.createElement('div'); info.id = 'gsInfo'; info.className = 'gs-info'; info.setAttribute('role', 'tooltip'); document.body.appendChild(info); }
+    infoDi = c; info.textContent = c.dataset.gsInfo; info.hidden = false;
+    const r = c.getBoundingClientRect(), w = info.offsetWidth, h = info.offsetHeight;
+    const x = Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2));
+    const sopra = r.top - h - 8 >= 8;
+    info.style.left = x + 'px'; info.style.top = (sopra ? r.top - h - 8 : r.bottom + 8) + 'px';
+  }
+  function nascondiInfo() { if (info) info.hidden = true; infoDi = null; }
+  /** Frecce tra le celle della stessa mappa (un solo punto di sosta del tasto Tab per mappa). */
+  function frecciaCella(ev) {
+    const c = ev.target.closest('[data-gs-info]'); if (!c) return false;
+    if (ev.key === 'Escape') { nascondiInfo(); return true; }
+    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); infoDi === c ? nascondiInfo() : mostraInfo(c); return true; }
+    const d = { ArrowRight: [0, 1], ArrowLeft: [0, -1], ArrowDown: [1, 0], ArrowUp: [-1, 0] }[ev.key]; if (!d) return false;
+    ev.preventDefault();
+    const m = c.closest('.gs-mappa'), r = +c.dataset.gsR + d[0], k = +c.dataset.gsK + d[1];
+    const dopo = m.querySelector(`[data-gs-r="${r}"][data-gs-k="${k}"]`);
+    if (dopo) { m.querySelectorAll('[data-gs-info][tabindex="0"]').forEach(x => { x.tabIndex = -1; }); dopo.tabIndex = 0; dopo.focus(); }
+    return true;
   }
 
   function testoErrore(e) {
@@ -73,7 +105,8 @@ const Accesso = (() => {
   }
 
   /* ---------------------------------------------- accesso */
-  function mostraAccesso(modo = 'accedi', msg = '', ok = '') {
+  /** email: quella già scritta, che resta nel campo dopo un errore (il cursore va sulla password). */
+  function mostraAccesso(modo = 'accedi', msg = '', ok = '', email0 = '') {
     const email = '<label>Email<input type="email" name="email" autocomplete="username" required maxlength="200"></label>';
     const M = {
       accedi: { sotto: 'Accedi con l’email e la password del tuo account.', pulsante: 'Accedi',
@@ -85,15 +118,16 @@ const Accesso = (() => {
         campi: '<label>Nuova password<input type="password" name="password" autocomplete="new-password" required minlength="' + PW_MIN + '"></label>' +
           '<label>Ripeti la password<input type="password" name="conferma" autocomplete="new-password" required minlength="' + PW_MIN + '"></label>', fondo: '' }
     }[modo];
-    pagina().innerHTML = `<div class="lcard stretta"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>${M.sotto}</p></div>
-      ${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
-      <form class="modulo" data-modo-form="${modo}" novalidate>${M.campi}<button type="submit" class="btn pri">${M.pulsante}</button>${M.fondo ? `<div>${M.fondo}</div>` : ''}</form></div>`;
-    const f = box.querySelector('input'); if (f) f.focus();
+    vista('Accesso').innerHTML = `<div class="lcard stretta"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>${M.sotto}</p></div>
+      ${msg ? `<p class="lerr" role="alert" id="accErr">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
+      <form class="modulo" data-modo-form="${modo}" novalidate${msg ? ' aria-describedby="accErr"' : ''}>${M.campi}<button type="submit" class="btn pri">${M.pulsante}</button>${M.fondo ? `<div>${M.fondo}</div>` : ''}</form></div>`;
+    const em = box.querySelector('input[name=email]'); if (em && email0) em.value = email0;
+    const f = (em && email0 && box.querySelector('input[type=password]')) || box.querySelector('input'); if (f) f.focus();
   }
 
   async function inviaAccesso(form) {
     const modo = form.dataset.modoForm, v = Object.fromEntries(new FormData(form));
-    const errore = m => mostraAccesso(modo, m);
+    const errore = m => mostraAccesso(modo, m, '', (v.email || '').trim());
     if (modo !== 'password' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((v.email || '').trim())) return errore('Scrivi un’email valida.');
     if (modo === 'password') {
       if ((v.password || '').length < PW_MIN) return errore('La password deve avere almeno ' + PW_MIN + ' caratteri.');
@@ -159,7 +193,8 @@ const Accesso = (() => {
       <p class="lnote">Per tornare a questa pagina usa il pulsante con il nome della carrozzeria, in alto a destra.</p></div>`;
   }
   function mostraElenco(focusSel) {
-    pagina().innerHTML = landingHtml();
+    nascondiInfo();
+    vista('Scegli la carrozzeria').innerHTML = landingHtml();
     const f = (focusSel && box.querySelector(focusSel)) || box.querySelector('[data-edit]') || box.querySelector('.last .lopen') || box.querySelector('.lopen');
     if (f) { f.focus(); if (f.matches('input')) f.select(); }
   }
@@ -221,6 +256,7 @@ const Accesso = (() => {
     } catch (e) { S.msg = testoErrore(e); mostraElenco(); }
   }
   function tasti(ev) {
+    if (frecciaCella(ev)) { ev.stopPropagation(); return; }
     if (ev.target.matches && ev.target.matches('[data-edit]')) {
       if (ev.key === 'Enter') { ev.preventDefault(); salvaNome(ev.target.dataset.edit); }
       if (ev.key === 'Escape') { ev.preventDefault(); S.modifica = null; mostraElenco(); }
@@ -234,20 +270,27 @@ const Accesso = (() => {
     if (tranquillo && gestoreInCorso) return;
     let n = 2; try { n = +localStorage.getItem('planning-gestore-settimane') || 2; } catch (e) { }
     gestoreInCorso = true;
-    const b = pagina(), prima = b.querySelector('.gestore');
-    if (prima) prima.setAttribute('aria-busy', 'true');
-    else b.innerHTML = '<div class="lcard gestore"><div class="lhead"><h1>Gestore</h1><p>Calcolo della saturazione di tutte le carrozzerie…</p></div></div>';
+    const b = vista('Gestore'), prima = b.querySelector('.gestore'), agg = b.querySelector('[data-gs-aggiorna]');
+    if (prima) {
+      prima.setAttribute('aria-busy', 'true');
+      // il tasto «Aggiorna» mostra che la lettura è in corso
+      if (agg) { agg.disabled = true; agg.classList.add('in-corso'); agg.lastElementChild.textContent = 'Aggiorno…'; }
+    } else b.innerHTML = '<div class="lcard gestore"><div class="lhead"><h1>Gestore</h1><p>Calcolo della saturazione di tutte le carrozzerie…</p></div></div>';
     try {
       // ora: solo l'orologio fisso delle prove (il server la accetta solo in locale, con CONSENTI_ORA_FINTA)
       // larghezza: solo per dividere le settimane in fasce che entrano nella pagina
       const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, larghezza: (larghezzaGestore = b.clientWidth), ora: window.__ORA_FINTA || null }, extra));
-      const su = b.scrollTop;
+      const su = b.scrollTop, fuocoAgg = agg && (document.activeElement === agg || document.activeElement === document.body);
+      nascondiInfo();
       b.innerHTML = r.html; lettoGestore = Date.now(); ascoltaVersioni();
-      if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && document.activeElement === document.body) x.focus({ preventScroll: true }); }
+      if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && (fuocoAgg || document.activeElement === document.body)) x.focus({ preventScroll: true }); }
       else { const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus(); }
     } catch (e) {
       // aggiornamento non riuscito: resta la pagina di prima, si riprova al prossimo giro
-      if (tranquillo && prima && prima.isConnected) { prima.removeAttribute('aria-busy'); lettoGestore = Date.now() - ogniGestore() + 60 * 1000; }
+      if (tranquillo && prima && prima.isConnected) {
+        prima.removeAttribute('aria-busy');
+        if (agg) { agg.disabled = false; agg.classList.remove('in-corso'); agg.lastElementChild.textContent = 'Aggiorna'; }
+        lettoGestore = Date.now() - ogniGestore() + 60 * 1000; }
       else { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }
     } finally { gestoreInCorso = false; }
   }
@@ -256,7 +299,7 @@ const Accesso = (() => {
   let chat = null, chatId = '', ascolto = null, contaAttesa = 0;
   function finestraChat() {
     if (chat) return chat;
-    chat = document.createElement('dialog'); chat.id = 'gsChat'; chat.className = 'gs-chatdlg'; document.body.appendChild(chat);
+    chat = document.createElement('dialog'); chat.id = 'gsChat'; chat.className = 'gs-chatdlg'; chat.setAttribute('aria-labelledby', 'gsChatTitolo'); document.body.appendChild(chat);
     chat.addEventListener('click', ev => { if (ev.target.closest('[data-gs-chiudichat]')) chat.close(); });
     chat.addEventListener('close', () => { chatId = ''; if (box && box.querySelector('.gestore .gs-head')) aggiornaContatori(); });
     chat.addEventListener('submit', ev => {
@@ -277,8 +320,17 @@ const Accesso = (() => {
       if (ta && tenere && scritto != null) ta.value = scritto;
       if (ta && !tenere) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
     } catch (e) {
-      if (inviato) { d.querySelectorAll('button').forEach(x => { x.disabled = false; }); alert(testoErrore(e)); }
-      else if (!tenere) alert(testoErrore(e));
+      // l'errore si legge nella finestra; se non si è aperta, una finestra con il solo avviso
+      if (tenere) return;
+      if (!d.open) {
+        d.innerHTML = `<div class="gs-chat"><header><h2 id="gsChatTitolo">Messaggi</h2><button type="button" class="x" data-gs-chiudichat="1" aria-label="Chiudi">×</button></header>
+          <p class="lerr" role="alert">${esc(testoErrore(e))}</p><div class="gs-azioni"><button type="button" class="gs-sec" data-gs-chiudichat="1">Chiudi</button></div></div>`;
+        d.showModal(); return;
+      }
+      d.querySelectorAll('button').forEach(x => { x.disabled = false; });
+      let p = d.querySelector('.lerr');
+      if (!p) { p = document.createElement('p'); p.className = 'lerr'; p.setAttribute('role', 'alert'); const az = d.querySelector('form .gs-azioni'); if (az) az.before(p); else d.querySelector('.gs-chat').append(p); }
+      p.textContent = testoErrore(e);
     }
   }
   function apriChat(id, testo) { ascoltaVersioni(); return caricaChat({ azione: 'chat', id, testo: testo || undefined, ora: window.__ORA_FINTA || null }); }
@@ -290,6 +342,7 @@ const Accesso = (() => {
         const n = (r.nuovi || {})[b.dataset.gsMsg] || 0, x = b.querySelector('b');
         if (x) x.textContent = n ? String(n) : '';
         b.classList.toggle('nuovi', n > 0);
+        b.setAttribute('aria-label', b.title + (n ? ', ' + n + ' da leggere' : ''));
       }
     } catch (e) { }
   }
