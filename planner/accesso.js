@@ -37,7 +37,9 @@ const Accesso = (() => {
   const indirizzo = () => location.origin + location.pathname;
   const voce = id => S.voci.find(s => s.id === id);
   const ultima = () => { try { return localStorage.getItem('planning-sede-ultima') || ''; } catch (e) { return ''; } };
-  let box = null, dlg = null, larghezzaGestore = 0;
+  let box = null, dlg = null, larghezzaGestore = 0, lettoGestore = 0, gestoreInCorso = false;
+  // ogni quanto si rileggono i dati del gestore aperto (le prove automatiche lo accorciano con __GESTORE_OGNI)
+  const ogniGestore = () => window.__GESTORE_OGNI ?? 10 * 60 * 1000;
 
   function pagina() {
     if (!box) {
@@ -45,8 +47,12 @@ const Accesso = (() => {
       document.body.appendChild(box);
       box.addEventListener('click', clic); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
       box.addEventListener('keydown', tasti);
+      // Gestore: dati riletti ogni 10 minuti mentre è aperto (e al ritorno su una scheda rimasta nascosta)
+      const gestoreVecchio = () => box.querySelector('.gestore .gs-head') && !box.querySelector('.gs-form') && Date.now() - lettoGestore >= ogniGestore();
+      setInterval(() => { if (document.visibilityState === 'visible' && gestoreVecchio()) apriGestore({}, true); }, 30 * 1000);
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && gestoreVecchio()) apriGestore({}, true); });
       // Gestore: se la finestra cambia molto di larghezza si richiede la pagina, con le settimane in fasce che entrano
-      let attesa = 0; addEventListener('resize', () => { clearTimeout(attesa); attesa = setTimeout(() => { if (box.querySelector('.gestore .gs-gruppo') && !box.querySelector('.gs-form') && Math.abs(box.clientWidth - larghezzaGestore) > 60) apriGestore(); }, 400); });
+      let attesa = 0; addEventListener('resize', () => { clearTimeout(attesa); attesa = setTimeout(() => { if (box.querySelector('.gestore .gs-gruppo') && !box.querySelector('.gs-form') && Math.abs(box.clientWidth - larghezzaGestore) > 60) apriGestore({}, true); }, 400); });
       box.addEventListener('change', ev => { const x = ev.target.closest('[data-gs-sett]'); if (x) { try { localStorage.setItem('planning-gestore-settimane', x.value); } catch (e) { } apriGestore(); } });
     }
     return box;
@@ -181,6 +187,7 @@ const Accesso = (() => {
     if (!t) { if (S.menu) { S.menu = null; mostraElenco(); } return; }
     if (t.dataset.esci) { await sb.auth.signOut(); S.utente = null; return mostraAccesso(); }
     if (t.dataset.gestore) return apriGestore();
+    if (t.dataset.gsAggiorna) return apriGestore({}, true);
     if (t.dataset.gs) { if (t.dataset.gsConferma && !confirm(t.dataset.gsConferma)) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
     if (t.dataset.gsChiudi) return mostraElenco('[data-gestore]');
     S.msg = ''; S.ok = '';
@@ -221,8 +228,11 @@ const Accesso = (() => {
   }
 
   /* ---------------------------------------------- gestore: cruscotto di tutte le carrozzerie (pagina preparata dal server) */
-  async function apriGestore(extra = {}) {
+  /** tranquillo: aggiornamento dei dati (tasto «Aggiorna» o ogni 10 minuti) senza spostare il fuoco né la posizione. */
+  async function apriGestore(extra = {}, tranquillo = false) {
+    if (tranquillo && gestoreInCorso) return;
     let n = 2; try { n = +localStorage.getItem('planning-gestore-settimane') || 2; } catch (e) { }
+    gestoreInCorso = true;
     const b = pagina(), prima = b.querySelector('.gestore');
     if (prima) prima.setAttribute('aria-busy', 'true');
     else b.innerHTML = '<div class="lcard gestore"><div class="lhead"><h1>Gestore</h1><p>Calcolo della saturazione di tutte le carrozzerie…</p></div></div>';
@@ -230,9 +240,15 @@ const Accesso = (() => {
       // ora: solo l'orologio fisso delle prove (il server la accetta solo in locale, con CONSENTI_ORA_FINTA)
       // larghezza: solo per dividere le settimane in fasce che entrano nella pagina
       const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, larghezza: (larghezzaGestore = b.clientWidth), ora: window.__ORA_FINTA || null }, extra));
-      b.innerHTML = r.html;
-      const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus();
-    } catch (e) { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }
+      const su = b.scrollTop;
+      b.innerHTML = r.html; lettoGestore = Date.now();
+      if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && document.activeElement === document.body) x.focus({ preventScroll: true }); }
+      else { const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus(); }
+    } catch (e) {
+      // aggiornamento non riuscito: resta la pagina di prima, si riprova al prossimo giro
+      if (tranquillo && prima && prima.isConnected) { prima.removeAttribute('aria-busy'); lettoGestore = Date.now() - ogniGestore() + 60 * 1000; }
+      else { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }
+    } finally { gestoreInCorso = false; }
   }
 
   /** Modulo del gestore: tutti i campi così come sono (i ripetuti come elenco), li controlla il server. */

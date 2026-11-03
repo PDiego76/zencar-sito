@@ -42,6 +42,9 @@ body.attesa { cursor: progress; }
 #landing .gs-ctl { display: grid; grid-template-columns: 1fr 1fr; align-content: center; gap: 8px; padding: 12px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 #landing .gs-ctl label { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; font: 500 13px var(--f, system-ui); }
 #landing .gs-ctl select { height: 36px; min-width: 64px; border: 1px solid var(--line); border-radius: 6px; padding: 0 8px; font: 500 14px var(--f, system-ui); background: var(--surface); color: var(--ink); }
+#landing .gs-agg { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 13px; }
+#landing .gs-agg b { font-variant-numeric: tabular-nums; }
+#landing .gs-agg small { display: block; font-size: 12px; color: var(--muted); }
 #landing .gs-pri, #landing .gs-sec { height: 36px; padding: 0 14px; border-radius: 6px; font: 600 13px var(--f, system-ui); cursor: pointer; white-space: nowrap; }
 #landing .gs-pri { border: 1px solid var(--navy); background: var(--navy); color: #fff; }
 #landing .gs-pri:hover { background: color-mix(in srgb, var(--navy) 86%, #fff); }
