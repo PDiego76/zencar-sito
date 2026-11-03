@@ -1198,3 +1198,9 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape);outline-offs
 .nfopt input{margin:0;width:18px;height:18px;accent-color:var(--tape)}
 .nfopt .ld{background:var(--c)}
 .nfopt .small{font-weight:400;justify-self:end}
+
+/* fase appena riaperta con «Non completata» (2026-11-03): targa e fase lampeggiano per circa due secondi, due volte al
+   secondo (sotto la soglia dei lampi pericolosi); con il movimento ridotto resta solo un bordo arancione fisso */
+.week .job.lampo{animation:lampo .5s ease-in-out 4;position:relative;z-index:1}
+@keyframes lampo{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--tape);background:rgba(184,90,8,.22)}}
+@media (prefers-reduced-motion: reduce){.week .job.lampo{box-shadow:0 0 0 3px var(--tape)}}
