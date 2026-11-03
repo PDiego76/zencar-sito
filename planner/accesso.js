@@ -48,11 +48,11 @@ const Accesso = (() => {
       box.addEventListener('click', clic); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
       box.addEventListener('keydown', tasti);
       // Gestore: dati riletti ogni 10 minuti mentre è aperto (e al ritorno su una scheda rimasta nascosta)
-      const gestoreVecchio = () => box.querySelector('.gestore .gs-head') && !box.querySelector('.gs-form') && Date.now() - lettoGestore >= ogniGestore();
+      const gestoreVecchio = () => box && box.querySelector('.gestore .gs-head') && !box.querySelector('.gs-form') && Date.now() - lettoGestore >= ogniGestore();
       setInterval(() => { if (document.visibilityState === 'visible' && gestoreVecchio()) apriGestore({}, true); }, 30 * 1000);
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && gestoreVecchio()) apriGestore({}, true); });
       // Gestore: se la finestra cambia molto di larghezza si richiede la pagina, con le settimane in fasce che entrano
-      let attesa = 0; addEventListener('resize', () => { clearTimeout(attesa); attesa = setTimeout(() => { if (box.querySelector('.gestore .gs-gruppo') && !box.querySelector('.gs-form') && Math.abs(box.clientWidth - larghezzaGestore) > 60) apriGestore({}, true); }, 400); });
+      let attesa = 0; addEventListener('resize', () => { clearTimeout(attesa); attesa = setTimeout(() => { if (box && box.querySelector('.gestore .gs-gruppo') && !box.querySelector('.gs-form') && Math.abs(box.clientWidth - larghezzaGestore) > 60) apriGestore({}, true); }, 400); });
       box.addEventListener('change', ev => { const x = ev.target.closest('[data-gs-sett]'); if (x) { try { localStorage.setItem('planning-gestore-settimane', x.value); } catch (e) { } apriGestore(); } });
     }
     return box;
@@ -186,6 +186,7 @@ const Accesso = (() => {
     const t = ev.target.closest('button');
     if (!t) { if (S.menu) { S.menu = null; mostraElenco(); } return; }
     if (t.dataset.esci) { await sb.auth.signOut(); S.utente = null; return mostraAccesso(); }
+    if (t.dataset.gsChat) return apriChat(t.dataset.gsChat, t.dataset.gsTesto || '');
     if (t.dataset.gestore) return apriGestore();
     if (t.dataset.gsAggiorna) return apriGestore({}, true);
     if (t.dataset.gs) { if (t.dataset.gsConferma && !confirm(t.dataset.gsConferma)) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
@@ -241,7 +242,7 @@ const Accesso = (() => {
       // larghezza: solo per dividere le settimane in fasce che entrano nella pagina
       const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, larghezza: (larghezzaGestore = b.clientWidth), ora: window.__ORA_FINTA || null }, extra));
       const su = b.scrollTop;
-      b.innerHTML = r.html; lettoGestore = Date.now();
+      b.innerHTML = r.html; lettoGestore = Date.now(); ascoltaVersioni();
       if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && document.activeElement === document.body) x.focus({ preventScroll: true }); }
       else { const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus(); }
     } catch (e) {
@@ -249,6 +250,59 @@ const Accesso = (() => {
       if (tranquillo && prima && prima.isConnected) { prima.removeAttribute('aria-busy'); lettoGestore = Date.now() - ogniGestore() + 60 * 1000; }
       else { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }
     } finally { gestoreInCorso = false; }
+  }
+
+  /* ------------- gestore: messaggi con una carrozzeria. La conversazione la prepara il server; qui solo finestra e invio */
+  let chat = null, chatId = '', ascolto = null, contaAttesa = 0;
+  function finestraChat() {
+    if (chat) return chat;
+    chat = document.createElement('dialog'); chat.id = 'gsChat'; chat.className = 'gs-chatdlg'; document.body.appendChild(chat);
+    chat.addEventListener('click', ev => { if (ev.target.closest('[data-gs-chiudichat]')) chat.close(); });
+    chat.addEventListener('close', () => { chatId = ''; if (box && box.querySelector('.gestore .gs-head')) aggiornaContatori(); });
+    chat.addEventListener('submit', ev => {
+      ev.preventDefault(); const f = ev.target;
+      f.querySelectorAll('button').forEach(x => { x.disabled = true; });
+      caricaChat({ azione: 'scrivi', id: f.dataset.gsId, campi: { testo: f.elements.testo.value } }, true);
+    });
+    return chat;
+  }
+  /** Mostra la conversazione dal server. tenere: conserva quello che si sta scrivendo (aggiornamento in tempo reale). */
+  async function caricaChat(corpo, inviato = false, tenere = false) {
+    const d = finestraChat(), prima = d.querySelector('textarea'), scritto = prima ? prima.value : null;
+    try {
+      const r = await chiamaFunzione('gestore', corpo);
+      d.innerHTML = r.chat; chatId = corpo.id;
+      if (!d.open) d.showModal();
+      const ta = d.querySelector('textarea');
+      if (ta && tenere && scritto != null) ta.value = scritto;
+      if (ta && !tenere) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
+    } catch (e) {
+      if (inviato) { d.querySelectorAll('button').forEach(x => { x.disabled = false; }); alert(testoErrore(e)); }
+      else if (!tenere) alert(testoErrore(e));
+    }
+  }
+  function apriChat(id, testo) { ascoltaVersioni(); return caricaChat({ azione: 'chat', id, testo: testo || undefined, ora: window.__ORA_FINTA || null }); }
+  /** Risposte da leggere accanto a ogni carrozzeria, senza ricalcolare la pagina. */
+  async function aggiornaContatori() {
+    try {
+      const r = await chiamaFunzione('gestore', { azione: 'contatori' });
+      for (const b of box.querySelectorAll('[data-gs-msg]')) {
+        const n = (r.nuovi || {})[b.dataset.gsMsg] || 0, x = b.querySelector('b');
+        if (x) x.textContent = n ? String(n) : '';
+        b.classList.toggle('nuovi', n > 0);
+      }
+    } catch (e) { }
+  }
+  /** Tempo reale: quando cambia una carrozzeria (anche un messaggio nuovo o letto) si rilegge la conversazione aperta
+      o si aggiornano i contatori. Il browser riceve solo il numero di versione, nessun dato. */
+  function ascoltaVersioni() {
+    if (ascolto) return;
+    ascolto = sb.channel('gestore-versioni').on('postgres_changes', { event: '*', schema: 'public', table: 'versioni' }, p => {
+      const c = p.new && p.new.carrozzeria_id;
+      if (chat && chat.open && c === chatId) return caricaChat({ azione: 'chat', id: chatId, ora: window.__ORA_FINTA || null }, false, true);
+      clearTimeout(contaAttesa);
+      contaAttesa = setTimeout(() => { if (box && box.querySelector('.gestore .gs-head')) aggiornaContatori(); }, 1500);
+    }).subscribe();
   }
 
   /** Modulo del gestore: tutti i campi così come sono (i ripetuti come elenco), li controlla il server. */

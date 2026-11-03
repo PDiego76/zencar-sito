@@ -195,7 +195,8 @@ const MAX_EVIDENZE = 10;
 function accendi(els) {
   const att = document.activeElement;
   if (att && att.matches('input, textarea') && !att.closest('dialog')) return;
-  const vis = els.filter(e => e.isConnected && !e.closest('header, [aria-live], [role="status"], .pghost') && e.getClientRects().length);
+  // mai il campo in cui si sta scrivendo: lampeggerebbe a ogni tasto
+  const vis = els.filter(e => e.isConnected && e !== att && !e.contains(att) && !e.closest('header, [aria-live], [role="status"], .pghost') && e.getClientRects().length);
   if (!vis.length || vis.length > MAX_EVIDENZE || !Element.prototype.animate) return;
   // un blocco intero nuovo (altra scheda, sezione che compare) è un cambio di pagina, non un valore cambiato
   if (vis.some(e => { const r = e.getBoundingClientRect(); return r.height > 96 || r.width * r.height > 90000; })) return;
@@ -474,7 +475,8 @@ window.bootSede = v => {
   sb.channel('versioni-' + v.id).on('postgres_changes', { event: '*', schema: 'public', table: 'versioni', filter: 'carrozzeria_id=eq.' + v.id }, p => {
     if (p.new && p.new.versione <= C.versione) return; // è un nostro salvataggio, già mostrato
     clearTimeout(attesa);
-    attesa = setTimeout(function prova() { if (C.catena.length || occupato()) { attesa = setTimeout(prova, 1000); return; } invia({ t: 'aggiorna' }); }, 300);
+    // con una finestra aperta si aspetta che si chiuda, salvo le finestre che il server segna come aggiornabili (data-vivo)
+    attesa = setTimeout(function prova() { if ((C.catena.length && !document.querySelector('dialog[open] [data-vivo]')) || occupato()) { attesa = setTimeout(prova, 1000); return; } invia({ t: 'aggiorna' }); }, 300);
   }).subscribe();
 };
 })();
