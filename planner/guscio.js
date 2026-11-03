@@ -57,10 +57,10 @@ function evento(tipo, el, extra = {}) {
 /* ---------------- richieste a "planner": una alla volta, a gruppi ----------------
    Le azioni fatte mentre una richiesta è in viaggio aspettano e partono tutte insieme nella successiva:
    anche con la rete lenta i viaggi restano pochi. L'anteprima del trascinamento parte subito, a parte. */
-let inCoda = [], lavoro = null, anteprime = 0;
+let inCoda = [], lavoro = null, anteprime = 0, attesaPv = 0; // attesaPv: anteprima del parcheggio in attesa di partire
 const occupato = () => !!lavoro || inCoda.length > 0 || anteprime > 0;
 // in attesa: richieste in coda o in corso, più le scritture non ancora inviate (usato anche dalle prove automatiche)
-const aggiornaAttesa = () => { window.__inVolo = (lavoro ? 1 : 0) + inCoda.length + anteprime + attesaInput.size; };
+const aggiornaAttesa = () => { window.__inVolo = (lavoro ? 1 : 0) + inCoda.length + anteprime + attesaInput.size + (attesaPv ? 1 : 0); };
 function invia(ev) {
   if (ev.t === 'anteprima') { anteprime++; aggiornaAttesa(); return richiesta([ev]).finally(() => { anteprime--; aggiornaAttesa(); }); }
   return new Promise(ok => { inCoda.push({ ev, ok }); aggiornaAttesa(); lavora(); });
@@ -104,7 +104,15 @@ async function richiesta(eventi) {
     if (!r.ok || d.errore) { mostraErrore(d.errore || 'Operazione non riuscita (' + r.status + ').'); return; }
     C.primo = false; C.versione = Math.max(C.versione, d.versione || 0); C.uiBase = d.uiBase; C.catena = d.catena || []; C.imp = d.imp; C.annulla = d.annulla || null;
     try { sessionStorage.setItem('vista', JSON.stringify({ tab: d.ui.tab, view: d.ui.view, weekStart: d.ui.weekStart, month: d.ui.month, parkWeek: d.ui.parkWeek, giorno: d.ui.giorno })); } catch (e) { }
-    togliErrore(); ultimaRisposta = Date.now(); applica(d);
+    togliErrore(); ultimaRisposta = Date.now();
+    if (d.tasti) C.tasti = d.tasti;
+    // un errore qui è della pagina, non della connessione: si chiede di nuovo tutta la pagina (una volta)
+    try { applica(d); C.rifatta = false; }
+    catch (e) {
+      console.error('[applica]', e); C.impronte = {};
+      if (C.rifatta) mostraErrore('La pagina non si è aggiornata correttamente: ricaricala.');
+      else { C.rifatta = true; invia({ t: 'aggiorna' }); }
+    }
   } catch (e) { mostraErrore('Connessione con il server non riuscita: l’ultima modifica potrebbe non essere stata salvata. Quando la connessione torna la pagina si aggiorna da sola.'); riprendi(); }
   finally {
     clearTimeout(lento); window.__messaggi++;
@@ -306,7 +314,13 @@ document.addEventListener('pointermove', ev => {
     const pv = c && c.matches('[data-pday]') && c.querySelector('.pvw');
     if (pv && tr.s.matches('.pcard')) {
       const mio = tr; if (!testoPv.has(pv)) testoPv.set(pv, pv.textContent); pv.textContent = 'Calcolo…';
-      invia({ t: 'anteprima', ind: tr.giu, sotto: indirizzo(c) }).then(x => { if (tr === mio && mio.sopra === c) pv.textContent = x || ''; });
+      // la richiesta parte solo se ci si ferma sul giorno: passando sopra più giorni non si accumulano richieste
+      clearTimeout(attesaPv);
+      attesaPv = setTimeout(() => {
+        attesaPv = 0; aggiornaAttesa();
+        if (tr !== mio || mio.sopra !== c) return;
+        invia({ t: 'anteprima', ind: mio.giu, sotto: indirizzo(c) }).then(x => { if (tr === mio && mio.sopra === c) pv.textContent = x || ''; }, () => { if (tr === mio && mio.sopra === c) pv.textContent = ''; });
+      }, 150); aggiornaAttesa();
     }
   }
   if (ev.clientY < 100) scrollBy(0, -14); else if (ev.clientY > innerHeight - 100) scrollBy(0, 14);
@@ -314,7 +328,7 @@ document.addEventListener('pointermove', ev => {
 });
 function fineTrascinamento(ev, annulla) {
   if (!tr) return;
-  const t = tr; tr = null;
+  const t = tr; tr = null; clearTimeout(attesaPv); attesaPv = 0; aggiornaAttesa();
   if (t.sagoma) t.sagoma.remove(); t.s.style.opacity = ''; evidenzia(t.sopra, false); ripristinaPv(t.sopra); document.body.classList.remove('dragmode');
   if (!t.on) return;
   mangiaClic = true; setTimeout(() => { mangiaClic = false; }, 0);
@@ -352,6 +366,13 @@ document.addEventListener('keydown', ev => {
   if (ev.key === 'F12') ev.preventDefault();
   if (scrive && !['Enter', 'Escape', 'F12'].includes(ev.key) && !annulla) return;
   if (['Shift', 'Control', 'Alt', 'Meta', 'Tab'].includes(ev.key)) return;
+  // nessuna richiesta per i tasti che il planning non usa (frecce su e giù, pagina su e giù, lettere senza scorciatoia)
+  if (!scrive && !annulla && ev.key !== 'F12') {
+    if (C.tasti && !C.tasti.includes(ev.key)) return;
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (ev.key === ' ' && t === document.body) return; // la barra spaziatrice scorre la pagina
+    if ((ev.key === 'Enter' || ev.key === ' ') && t.closest && t.closest('button, a[href], summary')) return; // il clic lo fa già il browser
+  }
   // tasto I: spiegazioni «i» da tastiera, solo sullo schermo (vedi i suggerimenti più sotto): nessuna richiesta al server
   if ((ev.key === 'i' || ev.key === 'I') && !ev.ctrlKey && !ev.metaKey && !ev.altKey) return;
   if (t.closest && t.closest('.tabs button') && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(ev.key)) ev.preventDefault();
@@ -471,12 +492,20 @@ window.bootSede = v => {
   C.voce = v;
   invia({ t: 'avvio' });
   // un collega ha cambiato i dati: si ridisegna, ma non mentre una finestra è aperta
-  let attesa = null;
+  let attesa = null, collegato = false;
   sb.channel('versioni-' + v.id).on('postgres_changes', { event: '*', schema: 'public', table: 'versioni', filter: 'carrozzeria_id=eq.' + v.id }, p => {
     if (p.new && p.new.versione <= C.versione) return; // è un nostro salvataggio, già mostrato
     clearTimeout(attesa);
     // con una finestra aperta si aspetta che si chiuda, salvo le finestre che il server segna come aggiornabili (data-vivo)
-    attesa = setTimeout(function prova() { if ((C.catena.length && !document.querySelector('dialog[open] [data-vivo]')) || occupato()) { attesa = setTimeout(prova, 1000); return; } invia({ t: 'aggiorna' }); }, 300);
-  }).subscribe();
+    attesa = setTimeout(function prova() {
+      if ((C.catena.length && !document.querySelector('dialog[open] [data-vivo]')) || occupato()) { attesa = setTimeout(prova, 1000); return; }
+      if (p.new && p.new.versione <= C.versione) return; // nel frattempo è arrivata la risposta del nostro salvataggio
+      invia({ t: 'aggiorna' });
+    }, 300);
+  }).subscribe(stato => {
+    // collegamento ripreso (computer in pausa, rete caduta): le modifiche arrivate nel frattempo si rileggono
+    if (stato === 'SUBSCRIBED' && collegato) invia({ t: 'aggiorna' });
+    if (stato === 'SUBSCRIBED') collegato = true;
+  });
 };
 })();

@@ -37,7 +37,7 @@ const Accesso = (() => {
   const indirizzo = () => location.origin + location.pathname;
   const voce = id => S.voci.find(s => s.id === id);
   const ultima = () => { try { return localStorage.getItem('planning-sede-ultima') || ''; } catch (e) { return ''; } };
-  let box = null, dlg = null, larghezzaGestore = 0, lettoGestore = 0, gestoreInCorso = false;
+  let box = null, dlg = null, larghezzaGestore = 0, lettoGestore = 0, gestoreInCorso = false, richiestaGestore = 0;
   // ogni quanto si rileggono i dati del gestore aperto (le prove automatiche lo accorciano con __GESTORE_OGNI)
   const ogniGestore = () => window.__GESTORE_OGNI ?? 10 * 60 * 1000;
 
@@ -269,7 +269,7 @@ const Accesso = (() => {
   async function apriGestore(extra = {}, tranquillo = false) {
     if (tranquillo && gestoreInCorso) return;
     let n = 2; try { n = +localStorage.getItem('planning-gestore-settimane') || 2; } catch (e) { }
-    gestoreInCorso = true;
+    gestoreInCorso = true; const n0 = ++richiestaGestore;
     const b = vista('Gestore'), prima = b.querySelector('.gestore'), agg = b.querySelector('[data-gs-aggiorna]');
     if (prima) {
       prima.setAttribute('aria-busy', 'true');
@@ -280,23 +280,26 @@ const Accesso = (() => {
       // ora: solo l'orologio fisso delle prove (il server la accetta solo in locale, con CONSENTI_ORA_FINTA)
       // larghezza: solo per dividere le settimane in fasce che entrano nella pagina
       const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, larghezza: (larghezzaGestore = b.clientWidth), ora: window.__ORA_FINTA || null }, extra));
+      if (n0 !== richiestaGestore || !b.isConnected) return; // è partita una richiesta più recente: vale quella
       const su = b.scrollTop, fuocoAgg = agg && (document.activeElement === agg || document.activeElement === document.body);
       nascondiInfo();
       b.innerHTML = r.html; lettoGestore = Date.now(); ascoltaVersioni();
       if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && (fuocoAgg || document.activeElement === document.body)) x.focus({ preventScroll: true }); }
       else { const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus(); }
     } catch (e) {
+      if (n0 !== richiestaGestore) return;
       // aggiornamento non riuscito: resta la pagina di prima, si riprova al prossimo giro
       if (tranquillo && prima && prima.isConnected) {
         prima.removeAttribute('aria-busy');
         if (agg) { agg.disabled = false; agg.classList.remove('in-corso'); agg.lastElementChild.textContent = 'Aggiorna'; }
         lettoGestore = Date.now() - ogniGestore() + 60 * 1000; }
       else { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }
-    } finally { gestoreInCorso = false; }
+    } finally { if (n0 === richiestaGestore) gestoreInCorso = false; }
   }
 
   /* ------------- gestore: messaggi con una carrozzeria. La conversazione la prepara il server; qui solo finestra e invio */
-  let chat = null, chatId = '', ascolto = null, contaAttesa = 0;
+  // richiestaChat: solo la risposta più recente si mostra; invio: numero della richiesta di invio ancora in viaggio
+  let chat = null, chatId = '', ascolto = null, contaAttesa = 0, richiestaChat = 0, invio = 0;
   function finestraChat() {
     if (chat) return chat;
     chat = document.createElement('dialog'); chat.id = 'gsChat'; chat.className = 'gs-chatdlg'; chat.setAttribute('aria-labelledby', 'gsChatTitolo'); document.body.appendChild(chat);
@@ -311,9 +314,14 @@ const Accesso = (() => {
   }
   /** Mostra la conversazione dal server. tenere: conserva quello che si sta scrivendo (aggiornamento in tempo reale). */
   async function caricaChat(corpo, inviato = false, tenere = false) {
-    const d = finestraChat(), prima = d.querySelector('textarea'), scritto = prima ? prima.value : null;
+    const d = finestraChat(), n = ++richiestaChat, eraAperta = d.open;
+    if (inviato) invio = n;
     try {
       const r = await chiamaFunzione('gestore', corpo);
+      // risposta superata da una più recente, o finestra chiusa nel frattempo: non si mostra
+      if (n !== richiestaChat || (eraAperta && !d.open)) return;
+      // quello che si sta scrivendo si legge adesso, non alla partenza della richiesta
+      const prima = d.querySelector('textarea'), scritto = prima ? prima.value : null;
       d.innerHTML = r.chat; chatId = corpo.id;
       if (!d.open) d.showModal();
       const ta = d.querySelector('textarea');
@@ -321,7 +329,7 @@ const Accesso = (() => {
       if (ta && !tenere) { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }
     } catch (e) {
       // l'errore si legge nella finestra; se non si è aperta, una finestra con il solo avviso
-      if (tenere) return;
+      if (tenere || n !== richiestaChat || (eraAperta && !d.open)) return;
       if (!d.open) {
         d.innerHTML = `<div class="gs-chat"><header><h2 id="gsChatTitolo">Messaggi</h2><button type="button" class="x" data-gs-chiudichat="1" aria-label="Chiudi">×</button></header>
           <p class="lerr" role="alert">${esc(testoErrore(e))}</p><div class="gs-azioni"><button type="button" class="gs-sec" data-gs-chiudichat="1">Chiudi</button></div></div>`;
@@ -331,7 +339,7 @@ const Accesso = (() => {
       let p = d.querySelector('.lerr');
       if (!p) { p = document.createElement('p'); p.className = 'lerr'; p.setAttribute('role', 'alert'); const az = d.querySelector('form .gs-azioni'); if (az) az.before(p); else d.querySelector('.gs-chat').append(p); }
       p.textContent = testoErrore(e);
-    }
+    } finally { if (invio === n) invio = 0; }
   }
   function apriChat(id, testo) { ascoltaVersioni(); return caricaChat({ azione: 'chat', id, testo: testo || undefined, ora: window.__ORA_FINTA || null }); }
   /** Risposte da leggere accanto a ogni carrozzeria, senza ricalcolare la pagina. */
@@ -352,7 +360,8 @@ const Accesso = (() => {
     if (ascolto) return;
     ascolto = sb.channel('gestore-versioni').on('postgres_changes', { event: '*', schema: 'public', table: 'versioni' }, p => {
       const c = p.new && p.new.carrozzeria_id;
-      if (chat && chat.open && c === chatId) return caricaChat({ azione: 'chat', id: chatId, ora: window.__ORA_FINTA || null }, false, true);
+      // durante un invio non serve: la risposta dell'invio porta già la conversazione aggiornata
+      if (chat && chat.open && c === chatId) return invio ? undefined : caricaChat({ azione: 'chat', id: chatId, ora: window.__ORA_FINTA || null }, false, true);
       clearTimeout(contaAttesa);
       contaAttesa = setTimeout(() => { if (box && box.querySelector('.gestore .gs-head')) aggiornaContatori(); }, 1500);
     }).subscribe();
@@ -371,6 +380,7 @@ const Accesso = (() => {
     const s = voce(id); if (!s || s.eliminata_il) return aggiorna();
     try { history.replaceState(null, '', location.pathname + location.search + '#c=' + id); } catch (e) { }
     if (box) { box.remove(); box = null; }
+    if (ascolto) { sb.removeChannel(ascolto); ascolto = null; } // il gestore non ascolta più le versioni
     bootSede(s);
   }
 
