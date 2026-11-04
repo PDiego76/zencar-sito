@@ -416,7 +416,10 @@ const Accesso = (() => {
         if (ev.target.closest('[data-x]')) return dlg.close(); // niente chiusura con un clic sullo sfondo
         const r = ev.target.closest('[data-rimuovi]'); if (r) cambiaMembro(r.dataset.rimuovi, null);
       });
-      dlg.addEventListener('change', ev => { const s = ev.target.closest('[data-ruolo]'); if (s) cambiaMembro(s.dataset.ruolo, s.value); });
+      dlg.addEventListener('change', ev => {
+        const s = ev.target.closest('[data-ruolo]'); if (s) return cambiaMembro(s.dataset.ruolo, s.value);
+        if (ev.target.matches('.invita [name=ruolo]')) ruoloScelto(ev.target);
+      });
       dlg.addEventListener('submit', ev => { ev.preventDefault(); invita(ev.target); });
       dlg.addEventListener('keydown', ev => ev.stopPropagation());
     }
@@ -433,17 +436,28 @@ const Accesso = (() => {
     const s = voce(dlg.dataset.sede);
     const { data, error } = await sb.rpc('utenti_carrozzeria', { c: s.id });
     const opzioni = r => Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${k === r ? ' selected' : ''}>${n}</option>`).join('');
-    const righe = error ? `<p class="lerr">${esc(testoErrore(error))}</p>` : data.map(u => `<div class="riga"><span class="chi">${esc(u.email)}${u.user_id === S.utente.id ? ' (tu)' : ''}
-        <small>${u.attivo ? 'Ha già effettuato l’accesso' : 'Invito in attesa: non ha ancora effettuato l’accesso'}</small></span>
-        ${u.amministratore ? '<strong class="admin">Amministratore</strong>' : `<select data-ruolo="${u.user_id}" aria-label="Ruolo di ${esc(u.email)}">${opzioni(u.ruolo)}</select>
-        <button type="button" class="btn sm danger" data-rimuovi="${u.user_id}">Rimuovi</button>`}</div>`).join('');
+    const stato = u => u.attivo ? '<span class="u-stato attivo">Attivo</span>' : '<span class="u-stato attesa" title="Non ha ancora effettuato il primo accesso">Invito in attesa</span>';
+    const righe = error ? `<p class="lerr">${esc(testoErrore(error))}</p>` : `<ul class="u-lista">${data.map(u => `<li class="riga">
+        <div class="chi"><span class="mail">${esc(u.email)}</span>${u.user_id === S.utente.id ? '<span class="u-tu">tu</span>' : ''}${stato(u)}</div>
+        ${u.amministratore ? '<div class="u-azioni admin"><strong>Amministratore</strong><small>titolare di tutte le carrozzerie, non modificabile</small></div>'
+          : `<div class="u-azioni"><select data-ruolo="${u.user_id}" aria-label="Ruolo di ${esc(u.email)}">${opzioni(u.ruolo)}</select>
+        <button type="button" class="btn sm danger" data-rimuovi="${u.user_id}" aria-label="Rimuovi ${esc(u.email)}">Rimuovi</button></div>`}</li>`).join('')}</ul>`;
+    const iniziale = 'officina';
     dlg.querySelector('.db').innerHTML = `${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
-      <div>${righe}</div>
-      <form class="invita" novalidate><label>Aggiungi una persona (email)<input type="email" name="email" maxlength="200" required autocomplete="off"></label>
-        <label>Ruolo<select name="ruolo">${opzioni('officina')}</select></label><button type="submit" class="btn pri">Aggiungi</button>
-        ${piuSedi() ? '<label class="tutte"><input type="checkbox" name="tutte" value="1"> Solo per il ruolo Gestore: aggiungilo in tutte le mie carrozzerie</label>' : ''}</form>
-      <ul class="ruoli">${Object.entries(SPIEGA).map(([k, t]) => `<li><strong>${RUOLI[k]}</strong>: ${esc(t)}</li>`).join('')}</ul>
-      <p class="lnote">Se l’email non ha ancora un account, la persona riceve un invito per scegliere la password.</p>`;
+      <section class="u-sez" aria-labelledby="uPersone"><h4 id="uPersone">Persone con accesso${data ? ` <span class="u-conta">${data.length}</span>` : ''}</h4>${righe}</section>
+      <form class="invita u-sez" novalidate aria-labelledby="uAggiungi"><h4 id="uAggiungi">Aggiungi una persona</h4>
+        <div class="u-campi"><label>Email<input type="email" name="email" maxlength="200" required autocomplete="off" placeholder="nome@esempio.it"></label>
+        <label>Ruolo<select name="ruolo">${opzioni(iniziale)}</select></label><button type="submit" class="btn pri">Aggiungi</button></div>
+        <p class="u-spiega" data-spiega aria-live="polite"><strong>${RUOLI[iniziale]}</strong>: ${esc(SPIEGA[iniziale])}</p>
+        ${piuSedi() ? '<label class="tutte" hidden><input type="checkbox" name="tutte" value="1"> Aggiungi in tutte le mie carrozzerie</label>' : ''}
+        <p class="lnote">Se l’email non ha ancora un account, la persona riceve un invito da planner@zencar.it per scegliere la password.</p></form>
+      <details class="u-ruoli"><summary>Cosa può fare ogni ruolo</summary><dl>${Object.entries(SPIEGA).map(([k, t]) => `<dt>${RUOLI[k]}</dt><dd>${esc(t)}</dd>`).join('')}</dl></details>`;
+  }
+  // ruolo scelto per la persona nuova: spiegazione di quel ruolo; «in tutte le carrozzerie» solo per il gestore
+  function ruoloScelto(sel) {
+    const f = sel.form, k = sel.value;
+    f.querySelector('[data-spiega]').innerHTML = `<strong>${RUOLI[k]}</strong>: ${esc(SPIEGA[k])}`;
+    const t = f.querySelector('.tutte'); if (t) { t.hidden = k !== 'gestore'; if (t.hidden) t.querySelector('input').checked = false; }
   }
   async function cambiaMembro(utenteId, ruolo) {
     const c = dlg.dataset.sede, io = utenteId === S.utente.id;
