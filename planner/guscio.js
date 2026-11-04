@@ -96,7 +96,7 @@ async function richiesta(eventi) {
     let vista = null; try { vista = JSON.parse(sessionStorage.getItem('vista') || 'null'); } catch (e) { }
     const prefs = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^planning-vista/.test(k)) prefs[k] = localStorage.getItem(k); } } catch (e) { }
     const corpo = { carrozzeria_id: C.voce.id, uiBase: C.uiBase || (C.primo && vista) || null, catena: C.catena, eventi, imp: C.imp, annulla: C.annulla,
-      impronte: C.impronte, primo: C.primo, prefs, larghezza: innerWidth, altezza: innerHeight, ora: window.__ORA_FINTA || null };
+      impronte: C.impronte, primo: C.primo, sola: C.voce.sola || null, prefs, larghezza: innerWidth, altezza: innerHeight, ora: window.__ORA_FINTA || null };
     const r = await fetch(window.CONFIG.url + '/functions/v1/planner', { method: 'POST', body: JSON.stringify(corpo),
       headers: { 'Content-Type': 'application/json', apikey: window.CONFIG.chiave, Authorization: 'Bearer ' + session.access_token } });
     const d = await r.json().catch(() => ({ errore: 'Risposta non leggibile dal server.' }));
@@ -145,7 +145,7 @@ function applica(m) {
 }
 function aggiornaParte(p) {
   let el = document.querySelector('body > [data-k="' + CSS.escape(p.k) + '"]');
-  if (p.rimosso) { if (el) { if (el.tagName === 'DIALOG' && el.open) el.close(); el.remove(); } delete C.impronte[p.k]; return; }
+  if (p.rimosso) { if (el) { if (el.tagName === 'DIALOG' && el.open) { chiuseDalServer.add(el); el.close(); } el.remove(); } delete C.impronte[p.k]; return; }
   C.impronte[p.k] = p.h;
   if (!el) {
     el = document.createElement(p.tag);
@@ -191,7 +191,7 @@ function aggiornaParte(p) {
       }
       el.showModal();
     }
-    else if (!('open' in p.attrs) && el.open) el.close();
+    else if (!('open' in p.attrs) && el.open) { chiuseDalServer.add(el); el.close(); }
   }
   if (el.id === 'pop' && !el.hidden && (eraNascosto || !el.style.left)) posizionaPop();
 }
@@ -216,10 +216,13 @@ function accendi(els) {
   }
 }
 const ascoltati = new WeakSet(); // niente attributi aggiunti: la firma degli elementi deve restare uguale a quella del server
+const chiuseDalServer = new WeakSet();
 function ascoltaDialogo(d) {
   if (ascoltati.has(d)) return; ascoltati.add(d);
   // Esc chiude le finestre: lo decide il server, che gestisce le conseguenze (conferme, annullamenti)
   d.addEventListener('cancel', e => { e.preventDefault(); evento('chiudi', d); });
+  // il browser a volte chiude la finestra da solo (Esc premuto due volte di seguito): il server deve saperlo
+  d.addEventListener('close', () => { if (chiuseDalServer.has(d)) { chiuseDalServer.delete(d); return; } if (d.isConnected) evento('chiudi', d); });
 }
 // rete caduta: appena torna, la pagina si ridisegna con i dati del server, così si vede cosa è stato salvato
 let daRiprendere = null;
@@ -298,6 +301,7 @@ const testoPv = new WeakMap();
 const ripristinaPv = c => { const pv = c && c.querySelector && c.querySelector('.pvw'); if (pv && testoPv.has(pv)) { pv.textContent = testoPv.get(pv); testoPv.delete(pv); } };
 document.addEventListener('pointermove', ev => {
   if (!tr) return;
+  if (!(ev.buttons & 1)) { fineTrascinamento(ev, true); return; } // rilasciato fuori dalla finestra: niente spostamento
   if (!tr.on) {
     if (Math.hypot(ev.clientX - tr.x, ev.clientY - tr.y) < 6) return;
     tr.on = true;
@@ -435,8 +439,10 @@ function scegliFile({ accept, scopo, binario }) {
 // trascinare un file sulla zona di importazione equivale a sceglierlo
 document.addEventListener('dragover', ev => { const z = ev.target.closest && ev.target.closest('#drop'); if (z) { ev.preventDefault(); z.style.outline = '2px dashed var(--tape)'; } });
 document.addEventListener('dragleave', ev => { const z = ev.target.closest && ev.target.closest('#drop'); if (z && !z.contains(ev.relatedTarget)) z.style.outline = ''; });
+const conFile = ev => ev.dataTransfer && [...(ev.dataTransfer.types || [])].includes('Files');
+document.addEventListener('dragover', ev => { if (conFile(ev) && !(ev.target.closest && ev.target.closest('#drop'))) { ev.preventDefault(); ev.dataTransfer.dropEffect = 'none'; } });
 document.addEventListener('drop', ev => {
-  const z = ev.target.closest && ev.target.closest('#drop'); if (!z) return; ev.preventDefault(); z.style.outline = '';
+  const z = ev.target.closest && ev.target.closest('#drop'); if (!z) { if (conFile(ev)) ev.preventDefault(); return; } ev.preventDefault(); z.style.outline = '';
   const f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0]; if (f) mandaFile(f, 'importa');
 });
 

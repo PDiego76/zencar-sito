@@ -206,3 +206,13 @@ body.attesa { cursor: progress; }
 .gs-info { position: fixed; z-index: 30001; max-width: 320px; padding: 10px 13px; border-radius: var(--rc); background: rgba(23, 43, 67, .92); color: #F2F5F8;
   font: 400 13px/1.5 var(--f, system-ui, sans-serif); box-shadow: 0 6px 22px rgba(0, 0, 0, .22); pointer-events: none; }
 .gs-info[hidden] { display: none; }
+
+/* Gestore: fatturato della settimana sotto la mappa (2026-11-04), allineato alle colonne delle settimane */
+#landing .gs-fh { margin-top: 10px; padding: 6px 8px; border-radius: 6px; background: var(--surface-2); font-weight: 700; font-size: 13px; }
+#landing .gs-fh span { font-weight: 400; color: var(--muted); margin-left: 6px; }
+#landing .gs-rf { font-weight: 600; }
+#landing .gs-f { display: flex; flex-direction: column; justify-content: center; gap: 1px; min-height: 46px; padding: 4px 12px; border: 1px solid var(--grid); border-radius: 6px; background: var(--ok-soft); font-variant-numeric: tabular-nums; }
+#landing .gs-f b { font-size: 15px; }
+#landing .gs-f small { font-size: 12px; color: var(--muted); }
+#landing .gs-f.zero, #landing .gs-f.vuoto { background: transparent; color: var(--muted); }
+#landing .gs-totf .gs-f { background: #fff; border-color: var(--navy); }

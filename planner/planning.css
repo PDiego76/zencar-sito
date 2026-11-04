@@ -1204,3 +1204,6 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape);outline-offs
 .week .job.lampo{animation:lampo .5s ease-in-out 4;position:relative;z-index:1}
 @keyframes lampo{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--tape);background:rgba(184,90,8,.22)}}
 @media (prefers-reduced-motion: reduce){.week .job.lampo{box-shadow:0 0 0 3px var(--tape)}}
+
+/* ruolo Gestore nella carrozzeria (2026-11-04): accanto al nome, l'avviso che la pagina è in sola consultazione */
+.solaconsulta{display:inline-flex;align-items:center;min-height:32px;padding:0 10px;border-radius:999px;border:1px solid var(--navy);color:var(--navy);font-size:12px;font-weight:700;white-space:nowrap}

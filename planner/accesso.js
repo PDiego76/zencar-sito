@@ -24,12 +24,13 @@ async function chiamaFunzione(nome, corpo, signal) {
 }
 
 const Accesso = (() => {
-  const RUOLI = { titolare: 'Titolare', accettazione: 'Accettazione', officina: 'Officina', amministrazione: 'Amministrazione' };
+  const RUOLI = { titolare: 'Titolare', accettazione: 'Accettazione', officina: 'Officina', amministrazione: 'Amministrazione', gestore: 'Gestore' };
   const SPIEGA = {
     titolare: 'tutto, compresi utenti, copie e ripristini',
     accettazione: 'vetture, operai, impostazioni, importi, copie',
     officina: 'consulta e segna le fasi fatte; non vede gli importi',
-    amministrazione: 'consulta, gestisce importi e copie; non modifica le vetture'
+    amministrazione: 'consulta, gestisce importi e copie; non modifica le vetture',
+    gestore: 'supervisiona dal Gestore e scrive i messaggi; nella carrozzeria vede tutto, importi compresi, senza modificare'
   };
   const PW_MIN = 10;
   const S = { utente: null, voci: [], menu: null, modifica: null, msg: '', ok: '', admin: false };
@@ -161,6 +162,9 @@ const Accesso = (() => {
   }
   const vive = () => S.voci.filter(s => !s.eliminata_il);
   const titolareDi = s => s.ruolo === 'titolare';
+  // Gestore e nuove carrozzerie (2026-11-04): solo per chi segue più sedi. Una carrozzeria con una sola sede non ne ha bisogno.
+  const piuSedi = () => S.admin || vive().filter(titolareDi).length >= 2;
+  const vedeGestore = () => piuSedi() || vive().some(s => s.ruolo === 'gestore');
   function nomeErrore(nome, id) {
     if (!nome) return 'Scrivi un nome.';
     if (nome.length > 60) return 'Il nome può avere al massimo 60 caratteri.';
@@ -180,11 +184,11 @@ const Accesso = (() => {
       return `<div class="lcardi${s.id === last ? ' last' : ''}"><button type="button" class="lopen" data-sede="${s.id}">${esc(s.nome)}<small>${esc(S.admin ? 'Amministratore' : RUOLI[s.ruolo])}${s.id === last ? ' · Ultima usata' : ''}</small></button>
         ${titolareDi(s) ? `<button type="button" class="lgear" data-menu="${s.id}" aria-haspopup="menu" aria-expanded="${S.menu === s.id}" aria-label="Impostazioni di ${esc(s.nome)}" title="Impostazioni">${GEAR}</button>${menu}` : ''}</div>`;
     };
-    const puoAggiungere = S.voci.some(titolareDi);
+    const puoAggiungere = piuSedi();
     const nuova = S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (puoAggiungere ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
     const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s));
     return `<div class="lcard"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>Scegli la carrozzeria: ognuna ha operai, vetture e impostazioni separati.</p></div>
-      <div class="lbar"><span>Accesso come <strong>${esc(S.utente.email)}</strong></span><span class="lbtn">${puoAggiungere ? '<button type="button" class="gestore-btn" data-gestore="1">Gestore</button>' : ''}<button type="button" class="esci" data-esci="1">Esci</button></span></div>
+      <div class="lbar"><span>Accesso come <strong>${esc(S.utente.email)}</strong></span><span class="lbtn">${vedeGestore() ? '<button type="button" class="gestore-btn" data-gestore="1">Gestore</button>' : ''}<button type="button" class="esci" data-esci="1">Esci</button></span></div>
       ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}
       ${vive().length || nuova ? `<div class="lgrid">${vive().map(card).join('')}${nuova}</div>`
         : '<p class="lnote">Non hai ancora accesso a nessuna carrozzeria: chiedi al titolare di aggiungerti.</p>'}
@@ -376,8 +380,9 @@ const Accesso = (() => {
   }
 
   /** Apre il planning della carrozzeria scelta. */
-  function apri(id) {
+  function apri(id, sola = '') {
     const s = voce(id); if (!s || s.eliminata_il) return aggiorna();
+    s.sola = sola;
     try { history.replaceState(null, '', location.pathname + location.search + '#c=' + id); } catch (e) { }
     if (box) { box.remove(); box = null; }
     if (ascolto) { sb.removeChannel(ascolto); ascolto = null; } // il gestore non ascolta più le versioni
@@ -417,7 +422,8 @@ const Accesso = (() => {
     dlg.querySelector('.db').innerHTML = `${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
       <div>${righe}</div>
       <form class="invita" novalidate><label>Aggiungi una persona (email)<input type="email" name="email" maxlength="200" required autocomplete="off"></label>
-        <label>Ruolo<select name="ruolo">${opzioni('officina')}</select></label><button type="submit" class="btn pri">Aggiungi</button></form>
+        <label>Ruolo<select name="ruolo">${opzioni('officina')}</select></label><button type="submit" class="btn pri">Aggiungi</button>
+        ${piuSedi() ? '<label class="tutte"><input type="checkbox" name="tutte" value="1"> Solo per il ruolo Gestore: aggiungilo in tutte le mie carrozzerie</label>' : ''}</form>
       <ul class="ruoli">${Object.entries(SPIEGA).map(([k, t]) => `<li><strong>${RUOLI[k]}</strong>: ${esc(t)}</li>`).join('')}</ul>
       <p class="lnote">Se l’email non ha ancora un account, la persona riceve un invito per scegliere la password.</p>`;
   }
@@ -434,10 +440,12 @@ const Accesso = (() => {
   async function invita(form) {
     const v = Object.fromEntries(new FormData(form)), email = (v.email || '').trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return disegnaUtenti('Scrivi un’email valida.');
+    if (v.tutte && v.ruolo !== 'gestore') return disegnaUtenti('«In tutte le mie carrozzerie» vale solo per il ruolo Gestore.');
     form.querySelector('[type=submit]').disabled = true;
     try {
-      const r = await chiamaFunzione('utenti', { carrozzeria_id: dlg.dataset.sede, email, ruolo: v.ruolo, indirizzo: indirizzo() });
-      disegnaUtenti('', r.esito === 'invitato' ? 'Invito inviato a ' + email + ': riceverà un’email per scegliere la password.' : email + ' aggiunto alla carrozzeria.');
+      const r = await chiamaFunzione('utenti', { carrozzeria_id: dlg.dataset.sede, email, ruolo: v.ruolo, tutte: !!v.tutte, indirizzo: indirizzo() });
+      const dove = r.carrozzerie > 1 ? ' in ' + r.carrozzerie + ' carrozzerie' : ' alla carrozzeria';
+      disegnaUtenti('', r.esito === 'invitato' ? 'Invito inviato a ' + email + ': riceverà un’email per scegliere la password. Aggiunto' + dove + '.' : email + ' aggiunto' + dove + '.');
     } catch (e) { disegnaUtenti(testoErrore(e)); }
   }
 
@@ -450,11 +458,24 @@ const Accesso = (() => {
     if (!ok && (TIPO_LINK === 'invite' || TIPO_LINK === 'recovery') && !passwordFatta) { passwordFatta = true; return mostraAccesso('password'); }
     passwordFatta = true;
     try { await caricaElenco(); } catch (e) { S.msg = testoErrore(e); }
+    // una sola carrozzeria e nessun ruolo di supervisione: si entra direttamente nel calendario (2026-11-04).
+    // Il titolare ritorna alla pagina delle carrozzerie (utenti, nome) con il pulsante del nome: «planning-elenco».
+    let elenco = false; try { elenco = sessionStorage.getItem('planning-elenco') === '1'; sessionStorage.removeItem('planning-elenco'); } catch (e) { }
+    const unica = vive().length === 1 && !vedeGestore() ? vive()[0] : null;
+    if (unica && !elenco) return apri(unica.id, titolareDi(unica) ? 'elenco' : 'esci');
     // come nel planning originale, #c=… nell'indirizzo riapre direttamente quella carrozzeria
     const c = new URLSearchParams(location.hash.slice(1)).get('c');
-    if (c && voce(c) && !voce(c).eliminata_il) return apri(c);
+    if (c && voce(c) && !voce(c).eliminata_il && !elenco) return apri(c);
     S.ok = ok; mostraElenco();
   }
+  document.addEventListener('click', async ev => {
+    const b = ev.target.closest && ev.target.closest('.sedechip[data-sola]'); if (!b) return;
+    ev.preventDefault(); ev.stopPropagation();
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
+    if (b.dataset.sola === 'esci') { await sb.auth.signOut(); location.reload(); return; }
+    try { sessionStorage.setItem('planning-elenco', '1'); } catch (e) { }
+    location.reload();
+  }, true);
   sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_OUT' && S.utente) { S.utente = null; location.reload(); } });
   return { avvia, pagina };
 })();
