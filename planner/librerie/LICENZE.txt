@@ -1,0 +1,6 @@
+Librerie ospitate sul sito invece che da siti esterni (2026-11-04), copie identiche agli originali
+(stessa impronta SRI di prima):
+- supabase.js            @supabase/supabase-js 2.117.2, licenza MIT – https://github.com/supabase/supabase-js
+- morphdom-umd.min.js    morphdom 2.7.8, licenza MIT – https://github.com/patrick-steele-idem/morphdom
+- pdf.min.js,
+  pdf.worker.min.js      pdf.js 3.11.174 (Mozilla), licenza Apache 2.0 – https://github.com/mozilla/pdf.js

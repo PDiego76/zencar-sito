@@ -7,7 +7,7 @@
      suggerimenti al passaggio del mouse, download e scelta di file (con estrazione del testo dei PDF). */
 (() => {
 const VOLATILI = new Set(['value', 'checked', 'selected', 'open', 'style']);
-const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+const PDFJS = 'librerie/'; // pdf.js 3.11.174, ospitato sul sito
 const PDFJS_SRI = { 'pdf.min.js': 'sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e', 'pdf.worker.min.js': 'sha384-SnzOobpRMLXZ52iJvZm/C0fYw0OQemTXzTjIsdsfMcrCtCEe9qgzxTd3RSklO5x2' };
 // stato della conversazione con "planner": vista di partenza, azioni nella finestra aperta, avviso "Annulla"
 const C = { voce: null, uiBase: null, catena: [], imp: null, annulla: null, impronte: {}, primo: true, versione: 0 };
@@ -393,7 +393,7 @@ function scarica({ nome, tipo, testo }) {
   a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 function caricaScript(src) {
-  return new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; const f = src.split('/').pop(); if (PDFJS_SRI[f]) { s.integrity = PDFJS_SRI[f]; s.crossOrigin = 'anonymous'; } s.onload = ok; s.onerror = () => ko(new Error('caricamento')); document.head.appendChild(s); });
+  return new Promise((ok, ko) => { const s = document.createElement('script'); s.src = src; const f = src.split('/').pop(); if (PDFJS_SRI[f]) s.integrity = PDFJS_SRI[f]; s.onload = ok; s.onerror = () => ko(new Error('caricamento')); document.head.appendChild(s); });
 }
 async function pdfjs() {
   if (window.pdfjsLib) return window.pdfjsLib;
