@@ -5,6 +5,7 @@ const { url: SB_URL, chiave: SB_CHIAVE } = window.CONFIG;
 // i link di invito e di recupero password arrivano con #…&type=invite|recovery (letti prima che supabase-js li tolga)
 const ARRIVO = new URLSearchParams(location.hash.slice(1));
 const TIPO_LINK = ARRIVO.get('type'), ERRORE_LINK = ARRIVO.get('error_description');
+if (window.top !== window.self) { document.documentElement.style.display = 'none'; try { window.top.location.href = location.href; } catch (e) { } }
 const sb = supabase.createClient(SB_URL, SB_CHIAVE, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 
 /** Chiama una funzione sul server con il token dell'utente. Errori: Error con .codice e .status. */
@@ -38,14 +39,20 @@ const Accesso = (() => {
   const indirizzo = () => location.origin + location.pathname;
   const voce = id => S.voci.find(s => s.id === id);
   const ultima = () => { try { return localStorage.getItem('planning-sede-ultima') || ''; } catch (e) { return ''; } };
-  // Gestore: righe del fatturato aperte per gruppo (chiuse di base), ricordate anche dopo «Aggiorna» e alla visita successiva
-  const fattAperti = (() => { try { return JSON.parse(localStorage.getItem('planning-gestore-fatturato') || '{}') || {}; } catch (e) { return {}; } })();
-  const salvaFatt = () => { try { localStorage.setItem('planning-gestore-fatturato', JSON.stringify(fattAperti)); } catch (e) { } };
-  function mostraFatt() {
+  // Gestore: parti apribili di ogni gruppo (fatturato della settimana, attività suggerita), chiuse di base e ricordate
+  // anche dopo «Aggiorna» e alla visita successiva. aperti[parte][gruppo] = true
+  const aperti = (() => {
+    const a = { fatt: {}, sugg: {} };
+    try { Object.assign(a, JSON.parse(localStorage.getItem('planning-gestore-aperti') || '{}') || {}); } catch (e) { }
+    try { const vecchio = JSON.parse(localStorage.getItem('planning-gestore-fatturato') || 'null'); if (vecchio) Object.assign(a.fatt, vecchio); } catch (e) { }
+    return a;
+  })();
+  const salvaAperti = () => { try { localStorage.setItem('planning-gestore-aperti', JSON.stringify(aperti)); localStorage.removeItem('planning-gestore-fatturato'); } catch (e) { } };
+  function mostraAperti() {
     if (!box) return;
-    for (const g of box.querySelectorAll('[data-gs-gruppo]')) {
-      const si = !!fattAperti[g.dataset.gsGruppo]; g.classList.toggle('fatt-aperto', si);
-      g.querySelectorAll('[data-gs-fatt]').forEach(b => b.setAttribute('aria-expanded', String(si)));
+    for (const g of box.querySelectorAll('[data-gs-gruppo]')) for (const parte of Object.keys(aperti)) {
+      const si = !!(aperti[parte] || {})[g.dataset.gsGruppo]; g.classList.toggle('apri-' + parte, si);
+      g.querySelectorAll('[data-gs-apri="' + parte + '"]').forEach(b => b.setAttribute('aria-expanded', String(si)));
     }
   }
   let box = null, dlg = null, larghezzaGestore = 0, lettoGestore = 0, gestoreInCorso = false, richiestaGestore = 0;
@@ -240,7 +247,7 @@ const Accesso = (() => {
     if (t.dataset.gsAggiorna) return apriGestore({}, true);
     if (t.dataset.gs) { if (t.dataset.gsConferma && !confirm(t.dataset.gsConferma)) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
     if (t.dataset.gsChiudi) return mostraElenco('[data-gestore]');
-    if (t.dataset.gsFatt) { const g = t.closest('[data-gs-gruppo]'); if (g) { fattAperti[g.dataset.gsGruppo] = !g.classList.contains('fatt-aperto'); salvaFatt(); mostraFatt(); } return; }
+    if (t.dataset.gsApri) { const g = t.closest('[data-gs-gruppo]'), parte = t.dataset.gsApri; if (g && aperti[parte]) { aperti[parte][g.dataset.gsGruppo] = !g.classList.contains('apri-' + parte); salvaAperti(); mostraAperti(); } return; }
     S.msg = ''; S.ok = '';
     if (t.dataset.menu) { const id = t.dataset.menu; S.menu = S.menu === id ? null : id; return mostraElenco(S.menu ? `.lmenu [data-ren="${id}"]` : `[data-menu="${id}"]`); }
     S.menu = null;
@@ -298,7 +305,7 @@ const Accesso = (() => {
       if (n0 !== richiestaGestore || !b.isConnected) return; // è partita una richiesta più recente: vale quella
       const su = b.scrollTop, fuocoAgg = agg && (document.activeElement === agg || document.activeElement === document.body);
       nascondiInfo();
-      b.innerHTML = r.html; mostraFatt(); lettoGestore = Date.now(); ascoltaVersioni();
+      b.innerHTML = r.html; mostraAperti(); lettoGestore = Date.now(); ascoltaVersioni();
       if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && (fuocoAgg || document.activeElement === document.body)) x.focus({ preventScroll: true }); }
       else { const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus(); }
     } catch (e) {

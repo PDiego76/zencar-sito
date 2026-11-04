@@ -406,7 +406,7 @@ const b64 = b => new Promise((ok, ko) => { const r = new FileReader(); r.onload 
 async function estrai(file) {
   try {
     if (/^image\//.test(file.type)) return { immagini: [{ tipo: file.type, base64: await b64(file) }] };
-    const lib = await pdfjs(), pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+    const lib = await pdfjs(), pdf = await lib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), isEvalSupported: false }).promise;
     let testo = '';
     for (let i = 1; i <= Math.min(pdf.numPages, 30); i++) {
       const pg = await pdf.getPage(i), tc = await pg.getTextContent(); let riga = '', out = [], y0 = null;
