@@ -482,17 +482,28 @@ const Accesso = (() => {
     } catch (e) { disegnaUtenti(testoErrore(e)); }
   }
 
-  /* ---------------------------------------------- persone e sedi (2026-11-05): chi lavora in quali carrozzerie, con quale
-     ruolo, in una tabella sola. Per il titolare di più sedi e l'amministratore. Stesse funzioni della finestra Utenti
-     (utenti_carrozzeria, membri, funzione utenti): i permessi li controlla il database. */
+  /* ---------------------------------------------- persone e sedi (2026-11-05, proposta D scelta dal titolare): a sinistra
+     l'elenco delle persone, a destra la scheda di quella scelta con una spunta per sede e il ruolo. Per il titolare di più
+     sedi e l'amministratore. Stesse funzioni della finestra Utenti (utenti_carrozzeria, membri, funzione utenti): i permessi
+     li controlla il database. */
   let dlgP = null;
+  const P = { dati: null, scelta: null, cerca: '' };
   const sediMie = () => vive().filter(titolareDi);
   function finestraPersone() {
     if (!dlgP) {
       dlgP = document.createElement('dialog'); dlgP.id = 'dlgPersone'; dlgP.setAttribute('aria-label', 'Persone e sedi');
       document.body.appendChild(dlgP);
-      dlgP.addEventListener('click', ev => { if (ev.target.closest('[data-x]')) dlgP.close(); });
-      dlgP.addEventListener('change', ev => { const s = ev.target.closest('[data-pc]'); if (s) ruoloInSede(s); });
+      dlgP.addEventListener('click', ev => {
+        if (ev.target.closest('[data-x]')) return dlgP.close();
+        const v = ev.target.closest('[data-psel]'); if (v) { P.scelta = v.dataset.psel; return schedaPersone(); }
+        if (ev.target.closest('[data-pnuova]')) { P.scelta = 'nuova'; return schedaPersone(); }
+        if (ev.target.closest('[data-ptutte]')) return togliOvunque();
+      });
+      dlgP.addEventListener('change', ev => {
+        const c = ev.target.closest('[data-psede]'); if (c) return sedeSiNo(c);
+        const r = ev.target.closest('[data-pruolo]'); if (r) return ruoloInSede(r);
+      });
+      dlgP.addEventListener('input', ev => { if (ev.target.matches('[data-pcerca]')) { P.cerca = ev.target.value; filtraElenco(); } });
       dlgP.addEventListener('submit', ev => { ev.preventDefault(); aggiungiPersona(ev.target); });
       dlgP.addEventListener('keydown', ev => ev.stopPropagation());
     }
@@ -500,9 +511,10 @@ const Accesso = (() => {
   }
   async function apriPersone() {
     const d = finestraPersone();
+    P.dati = null; P.scelta = null; P.cerca = '';
     d.innerHTML = `<div class="dh"><h3>Persone e sedi</h3><button class="x" type="button" data-x="1" aria-label="Chiudi">×</button></div><div class="db"><p class="lnote">Caricamento…</p></div>`;
     if (!d.open) d.showModal();
-    await disegnaPersone();
+    await ricaricaPersone();
   }
   async function leggiPersone() {
     const sedi = sediMie(), persone = new Map();
@@ -517,52 +529,107 @@ const Accesso = (() => {
     // prima l'amministratore, poi per email
     return { sedi, persone: [...persone.values()].sort((a, b) => (b.admin - a.admin) || a.email.localeCompare(b.email, 'it')) };
   }
-  async function disegnaPersone(msg = '', ok = '') {
-    let dati; try { dati = await leggiPersone(); } catch (e) { msg = testoErrore(e); }
-    const opz = r => `<option value=""${r ? '' : ' selected'}>—</option>` + Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${k === r ? ' selected' : ''}>${n}</option>`).join('');
-    const tabella = !dati ? '' : `<div class="p-scorri"><table class="p-tab"><thead><tr><th scope="col">Persona</th>${dati.sedi.map(s => `<th scope="col">${esc(s.nome)}</th>`).join('')}</tr></thead><tbody>
-      ${dati.persone.map(p => `<tr><th scope="row"><span class="mail">${esc(p.email)}</span>${p.id === S.utente.id ? '<span class="u-tu">tu</span>' : ''}${p.attivo ? '' : '<span class="u-stato attesa">Invito in attesa</span>'}</th>
-        ${dati.sedi.map(s => p.admin ? '<td class="p-admin">Amministratore</td>'
-          : `<td${p.ruoli[s.id] ? '' : ' class="p-no"'}><select data-pc="${s.id}" data-pu="${p.id}" data-pe="${esc(p.email)}" data-pr="${p.ruoli[s.id] || ''}" aria-label="Ruolo di ${esc(p.email)} in ${esc(s.nome)}">${opz(p.ruoli[s.id] || '')}</select></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
-    const sedi = dati ? dati.sedi : sediMie();
-    dlgP.querySelector('.db').innerHTML = `${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
-      <p class="lnote">Chi lavora in quali carrozzerie e con quale ruolo. Scegli «—» per togliere una persona da una sede. Ogni cambiamento vale subito.</p>
-      ${tabella}
-      <form class="invita u-sez" novalidate aria-labelledby="pAggiungi"><h4 id="pAggiungi">Aggiungi una persona a più sedi</h4>
-        <div class="u-campi"><label>Email<input type="email" name="email" maxlength="200" required autocomplete="off" placeholder="nome@esempio.it"></label>
-        <label>Ruolo<select name="ruolo">${Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${k === 'accettazione' ? ' selected' : ''}>${n}</option>`).join('')}</select></label><button type="submit" class="btn pri">Aggiungi</button></div>
-        <fieldset class="p-sedi"><legend>Sedi</legend>${sedi.map(s => `<label><input type="checkbox" name="sede" value="${s.id}"> ${esc(s.nome)}</label>`).join('')}</fieldset>
-        <p class="lnote">Se l’email non ha ancora un account, la persona riceve un invito da planner@zencar.it per scegliere la password.</p></form>`;
+  async function ricaricaPersone(msg = '', ok = '', sceltaEmail = '') {
+    try { P.dati = await leggiPersone(); } catch (e) { msg = testoErrore(e); }
+    if (P.dati && sceltaEmail) { const p = P.dati.persone.find(x => x.email.toLowerCase() === sceltaEmail.toLowerCase()); if (p) P.scelta = p.id; }
+    if (P.dati && P.scelta !== 'nuova' && !P.dati.persone.some(p => p.id === P.scelta)) P.scelta = (P.dati.persone.find(p => !p.admin) || P.dati.persone[0] || {}).id || 'nuova';
+    schedaPersone(msg, ok);
   }
-  async function ruoloInSede(sel) {
-    const c = sel.dataset.pc, u = sel.dataset.pu, prima = sel.dataset.pr, ruolo = sel.value, io = u === S.utente.id, nome = (voce(c) || {}).nome || '';
-    if (!ruolo && !confirm(io ? 'Togliendoti da ' + nome + ' perderai l’accesso a questa carrozzeria. Continuare?' : 'Togliere ' + sel.dataset.pe + ' da ' + nome + '?')) { sel.value = prima; return; }
-    if (io && ruolo && ruolo !== 'titolare' && !confirm('Cambiando il tuo ruolo in ' + nome + ' non potrai più gestirne utenti e impostazioni. Continuare?')) { sel.value = prima; return; }
+  // riassunto della persona nell'elenco: ruolo e sedi
+  function riassunto(p, sedi) {
+    if (p.admin) return 'Amministratore · tutte le sedi';
+    const dove = sedi.filter(s => p.ruoli[s.id]);
+    const ruoli = [...new Set(dove.map(s => p.ruoli[s.id]))].map(r => RUOLI[r]).join(', ');
+    const luoghi = dove.length === sedi.length && sedi.length > 2 ? 'tutte le sedi' : dove.map(s => s.nome).join(', ');
+    return (ruoli ? ruoli + ' · ' + luoghi : 'nessuna sede') + (p.attivo ? '' : ' · invito in attesa');
+  }
+  function filtraElenco() {
+    const q = P.cerca.trim().toLowerCase();
+    dlgP.querySelectorAll('.p-voce').forEach(v => { v.hidden = !!q && !v.textContent.toLowerCase().includes(q); });
+  }
+  function schedaPersone(msg = '', ok = '') {
+    const d = P.dati, ruoliOpz = r => Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${k === r ? ' selected' : ''}>${n}</option>`).join('');
+    if (!d) { dlgP.querySelector('.db').innerHTML = `<p class="lerr" role="alert">${esc(msg || 'Elenco non disponibile.')}</p>`; return; }
+    const elenco = d.persone.map(p => `<button type="button" class="p-voce${p.id === P.scelta ? ' on' : ''}" data-psel="${p.id}"${p.id === P.scelta ? ' aria-current="true"' : ''}>
+        <span class="p-nome">${esc(p.email)}${p.id === S.utente.id ? ' <span class="u-tu">tu</span>' : ''}</span><span class="p-ria">${esc(riassunto(p, d.sedi))}</span></button>`).join('');
+    let destra;
+    if (P.scelta === 'nuova') {
+      destra = `<form class="p-form" novalidate aria-labelledby="pNuova"><h4 id="pNuova">Nuova persona</h4>
+        <div class="u-campi"><label>Email<input type="email" name="email" maxlength="200" required autocomplete="off" placeholder="nome@esempio.it"></label>
+        <label>Ruolo<select name="ruolo">${ruoliOpz('accettazione')}</select></label><button type="submit" class="btn pri">Aggiungi</button></div>
+        <fieldset class="p-sedi"><legend>Sedi in cui lavora</legend>${d.sedi.map(s => `<label><input type="checkbox" name="sede" value="${s.id}"> ${esc(s.nome)}</label>`).join('')}</fieldset>
+        <p class="lnote">Se l’email non ha ancora un account, la persona riceve un invito da planner@zencar.it per scegliere la password. Il ruolo vale in tutte le sedi spuntate; dopo si può cambiare sede per sede.</p></form>`;
+    } else {
+      const p = d.persone.find(x => x.id === P.scelta);
+      const usati = [...new Set(d.sedi.map(s => p.ruoli[s.id]).filter(Boolean))];
+      const base = usati[0] || 'accettazione';
+      const stato = p.attivo ? '<span class="u-stato attivo">Attivo</span>' : '<span class="u-stato attesa">Invito in attesa</span>';
+      destra = `<div class="p-testa"><span class="p-ini" aria-hidden="true">${esc(p.email.charAt(0).toUpperCase())}</span><div><h4 class="p-mail">${esc(p.email)}</h4>${stato}${p.id === S.utente.id ? ' <span class="u-tu">tu</span>' : ''}</div></div>
+        ${p.admin ? '<p class="p-nota">Amministratore della piattaforma: titolare di tutte le carrozzerie, non modificabile.</p>' : `
+        <section class="p-sez" aria-labelledby="pSedi"><h4 id="pSedi">Sedi in cui lavora</h4><div class="p-righe">
+        ${d.sedi.map(s => { const r = p.ruoli[s.id]; return `<div class="p-riga${r ? ' dentro' : ''}"><label><input type="checkbox" data-psede="${s.id}"${r ? ' checked' : ''}> ${esc(s.nome)}</label>
+          <select data-pruolo="${s.id}" aria-label="Ruolo in ${esc(s.nome)}"${r ? '' : ' disabled'}>${ruoliOpz(r || base)}</select></div>`; }).join('')}</div></section>
+        ${usati.length ? `<div class="p-spiega">${usati.map(r => `<p><strong>${RUOLI[r]}</strong>: ${esc(SPIEGA[r])}</p>`).join('')}</div>` : ''}
+        <div class="p-piede"><p class="lnote">La spunta aggiunge o toglie la sede; il ruolo vale solo in quella sede. Ogni cambiamento vale subito.</p>
+        ${usati.length ? '<button type="button" class="btn sm danger" data-ptutte="1">Togli da tutte le sedi</button>' : ''}</div>`}`;
+    }
+    dlgP.querySelector('.db').innerHTML = `${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
+      <div class="p-due"><div class="p-elenco"><div class="p-cerca"><label><span class="p-nasc">Cerca</span><input type="search" data-pcerca="1" placeholder="Cerca…" value="${esc(P.cerca)}" autocomplete="off"></label>
+        <button type="button" class="btn sm pri" data-pnuova="1">+ Nuova</button></div><div class="p-lista">${elenco}</div></div>
+      <div class="p-scheda">${destra}</div></div>`;
+    filtraElenco();
+  }
+  const personaScelta = () => P.dati && P.dati.persone.find(x => x.id === P.scelta);
+  async function cambiaMembroSede(p, c, ruolo, prima) {
+    const io = p.id === S.utente.id, nome = (voce(c) || {}).nome || '';
+    if (!ruolo && !confirm(io ? 'Togliendoti da ' + nome + ' perderai l’accesso a questa carrozzeria. Continuare?' : 'Togliere ' + p.email + ' da ' + nome + '?')) return schedaPersone();
+    if (io && ruolo && prima && ruolo !== 'titolare' && !confirm('Cambiando il tuo ruolo in ' + nome + ' non potrai più gestirne utenti e impostazioni. Continuare?')) return schedaPersone();
     try {
-      if (!prima) await chiamaFunzione('utenti', { carrozzeria_id: c, email: sel.dataset.pe, ruolo, indirizzo: indirizzo() });
+      if (!prima) await chiamaFunzione('utenti', { carrozzeria_id: c, email: p.email, ruolo, indirizzo: indirizzo() });
       else {
         const q = sb.from('membri');
-        const { error } = ruolo ? await q.update({ ruolo }).eq('carrozzeria_id', c).eq('user_id', u) : await q.delete().eq('carrozzeria_id', c).eq('user_id', u);
+        const { error } = ruolo ? await q.update({ ruolo }).eq('carrozzeria_id', c).eq('user_id', p.id) : await q.delete().eq('carrozzeria_id', c).eq('user_id', p.id);
         if (error) throw error;
       }
-      if (io) { dlgP.close(); return aggiorna(); }
-      disegnaPersone('', !ruolo ? sel.dataset.pe + ' tolto da ' + nome + '.' : !prima ? sel.dataset.pe + ' aggiunto a ' + nome + '.' : 'Ruolo in ' + nome + ' aggiornato.');
+      if (io && ruolo !== 'titolare') { dlgP.close(); return aggiorna(); }
+      ricaricaPersone('', !ruolo ? p.email + ' tolto da ' + nome + '.' : !prima ? p.email + ' aggiunto a ' + nome + ' come ' + RUOLI[ruolo] + '.' : 'Ruolo in ' + nome + ': ' + RUOLI[ruolo] + '.');
     } catch (e) {
       const m = e.message || '';
-      disegnaPersone(/almeno un titolare/i.test(m) ? 'Ogni carrozzeria deve avere almeno un titolare.' : /amministratore/i.test(m) ? 'L’amministratore non può cambiare ruolo né essere rimosso.' : testoErrore(e));
+      ricaricaPersone(/almeno un titolare/i.test(m) ? 'Ogni carrozzeria deve avere almeno un titolare.' : /amministratore/i.test(m) ? 'L’amministratore non può cambiare ruolo né essere rimosso.' : testoErrore(e));
     }
+  }
+  function sedeSiNo(chk) {
+    const p = personaScelta(); if (!p) return;
+    const c = chk.dataset.psede, sel = dlgP.querySelector(`[data-pruolo="${c}"]`);
+    return cambiaMembroSede(p, c, chk.checked ? sel.value : null, p.ruoli[c] || '');
+  }
+  function ruoloInSede(sel) {
+    const p = personaScelta(); if (!p) return;
+    return cambiaMembroSede(p, sel.dataset.pruolo, sel.value, p.ruoli[sel.dataset.pruolo] || '');
+  }
+  async function togliOvunque() {
+    const p = personaScelta(); if (!p) return;
+    const dove = P.dati.sedi.filter(s => p.ruoli[s.id]);
+    if (!confirm('Togliere ' + p.email + ' da ' + (dove.length === 1 ? dove[0].nome : 'tutte le ' + dove.length + ' sedi') + '?')) return;
+    if (p.id === S.utente.id && !confirm('Perderai l’accesso a queste carrozzerie. Continuare?')) return;
+    let fatte = 0;
+    try {
+      for (const s of dove) { const { error } = await sb.from('membri').delete().eq('carrozzeria_id', s.id).eq('user_id', p.id); if (error) throw error; fatte++; }
+      if (p.id === S.utente.id) { dlgP.close(); return aggiorna(); }
+      ricaricaPersone('', p.email + ' tolto da ' + fatte + (fatte === 1 ? ' sede.' : ' sedi.'));
+    } catch (e) { const m = e.message || ''; ricaricaPersone((fatte ? 'Tolto da ' + fatte + ' sedi, poi: ' : '') + (/almeno un titolare/i.test(m) ? 'ogni carrozzeria deve avere almeno un titolare.' : testoErrore(e))); }
   }
   async function aggiungiPersona(form) {
     const campi = new FormData(form), email = String(campi.get('email') || '').trim(), ruolo = String(campi.get('ruolo')), sedi = campi.getAll('sede').map(String);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return disegnaPersone('Scrivi un’email valida.');
-    if (!sedi.length) return disegnaPersone('Spunta almeno una sede.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return schedaPersone('Scrivi un’email valida.');
+    if (!sedi.length) return schedaPersone('Spunta almeno una sede.');
     form.querySelector('[type=submit]').disabled = true;
     let invitato = false, fatte = 0;
     try {
       // una sede alla volta: la prima invita (se serve), le altre aggiungono la persona già registrata
       for (const c of sedi) { const r = await chiamaFunzione('utenti', { carrozzeria_id: c, email, ruolo, indirizzo: indirizzo() }); invitato = invitato || r.esito === 'invitato'; fatte++; }
-      disegnaPersone('', (invitato ? 'Invito inviato a ' + email + '. ' : '') + email + ' aggiunto come ' + RUOLI[ruolo] + ' in ' + fatte + (fatte === 1 ? ' sede.' : ' sedi.'));
-    } catch (e) { disegnaPersone((fatte ? 'Aggiunto in ' + fatte + ' sedi, poi: ' : '') + testoErrore(e)); }
+      ricaricaPersone('', (invitato ? 'Invito inviato a ' + email + '. ' : '') + email + ' aggiunto come ' + RUOLI[ruolo] + ' in ' + fatte + (fatte === 1 ? ' sede.' : ' sedi.'), email);
+    } catch (e) { ricaricaPersone((fatte ? 'Aggiunto in ' + fatte + ' sedi, poi: ' : '') + testoErrore(e), '', fatte ? email : ''); }
   }
 
   /* ---------------------------------------------- avvio */
