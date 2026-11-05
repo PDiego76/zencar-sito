@@ -307,7 +307,7 @@ const Accesso = (() => {
       nascondiInfo();
       b.innerHTML = r.html; mostraAperti(); lettoGestore = Date.now(); ascoltaVersioni();
       if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && (fuocoAgg || document.activeElement === document.body)) x.focus({ preventScroll: true }); }
-      else { const f = b.querySelector('.gs-form input') || b.querySelector('[data-gs-sett]'); if (f) f.focus(); }
+      else { const f = b.querySelector('.gs-form input') || b.querySelector('.gs-head h1'); if (f) f.focus({ preventScroll: true }); } // all'apertura il cursore va sul titolo, non su un campo (2026-11-05)
     } catch (e) {
       if (n0 !== richiestaGestore) return;
       // aggiornamento non riuscito: resta la pagina di prima, si riprova al prossimo giro

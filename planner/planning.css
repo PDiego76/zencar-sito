@@ -506,7 +506,7 @@ dialog{border-radius:10px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 14px;font-size:13.5px;line-height:1;white-space:nowrap}
 .btn.sm{padding:0 10px;font-size:12.5px}
 select,input[type=text],input[type=number],input[type=date],input[type=time]{height:34px;padding:0 10px}
-.bdate input,.pedit input[type=date],.qbox{height:30px}
+.bdate input,.pedit input[type=date]{height:32px}.qbox{height:30px}
 .seg{padding:3px}
 .seg button{border-radius:4px;padding:0 12px;display:inline-flex;align-items:center}
 .tabs{border-radius:var(--rb);padding:4px}
@@ -520,7 +520,7 @@ select,input[type=text],input[type=number],input[type=date],input[type=time]{hei
 .pop .actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .pop .actions .btn{width:100%}
 .pop .actions .btn.tape{grid-column:1 / -1}
-.bdate{height:28px}
+.bdate{height:32px}
 .bchip{padding:3px 3px 3px 10px}
 
 .dops button{display:inline-flex;align-items:center}

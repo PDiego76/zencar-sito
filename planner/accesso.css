@@ -24,7 +24,7 @@
 #dlgUtenti .riga + .riga { border-top: 1px solid var(--grid); }
 #dlgUtenti .chi { flex: 1 1 240px; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 #dlgUtenti .chi .mail { font: 500 14px var(--f, system-ui); color: var(--ink); overflow-wrap: anywhere; }
-#dlgUtenti .u-tu { padding: 1px 7px; border-radius: 9px; background: var(--grid); color: var(--muted); font: 600 11px/16px var(--f, system-ui); }
+#dlgUtenti .u-tu { padding: 1px 7px; border-radius: 9px; background: var(--grid); color: var(--muted); font: 600 12px/16px var(--f, system-ui); }
 #dlgUtenti .u-stato { padding: 1px 8px; border-radius: 9px; border: 1px solid; font: 600 12px/16px var(--f, system-ui); white-space: nowrap; }
 #dlgUtenti .u-stato.attivo { background: var(--ok-soft); border-color: var(--ok-line); color: var(--ok); }
 #dlgUtenti .u-stato.attesa { background: color-mix(in srgb, var(--warn) 9%, #fff); border-color: color-mix(in srgb, var(--warn) 35%, #fff); color: var(--warn); }
@@ -116,6 +116,7 @@ body.attesa { cursor: progress; }
 #landing .gs-hw span { white-space: nowrap; }
 #landing .gs-hw span { font-weight: 400; color: var(--muted); }
 #landing .gs-hr { display: flex; align-items: center; gap: 4px; padding: 2px 2px 6px; font-size: 12px; font-weight: 600; color: var(--muted); white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+#landing .gs-hr span { white-space: normal; line-height: 1.2; min-width: 0; } /* «Stac/ri.» va a capo dopo la barra solo se la colonna è stretta (telefono) */
 #landing .gs-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
 #landing .gs-r { display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 4px 8px; min-height: 46px; border-top: 1px solid var(--grid); min-width: 0; }
 #landing .gs-r small { font-size: 12px; color: var(--muted); }
@@ -269,3 +270,4 @@ body.attesa { cursor: progress; }
 #landing .gs-f small { font-size: 12px; color: var(--muted); }
 #landing .gs-f.zero, #landing .gs-f.vuoto { background: transparent; color: var(--muted); }
 #landing .gs-totf .gs-f { background: #fff; border-color: var(--navy); }
+#landing .gs-head h1:focus { outline: none; } /* titolo raggiunto all'apertura del Gestore: punto di partenza per la tastiera, nessun bordo */
