@@ -322,3 +322,44 @@ body.attesa { cursor: progress; }
   #dlgPersone .p-riga select { width: 140px; }
   #dlgPersone .u-campi { grid-template-columns: 1fr; }
 }
+/* strumenti del gruppo di sedi sopra le schede (2026-11-05): stessa misura, bordo blu notte, icona */
+#landing .lbar .ltit { margin: 0; font: 700 16px var(--f, system-ui); color: var(--ink); }
+#landing .lbar .lbtn { display: flex; flex-wrap: wrap; gap: 8px; }
+#landing .lstr { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 156px; height: 38px; padding: 0 16px; border: 1px solid var(--navy); border-radius: 6px; background: var(--surface); color: var(--navy); font: 600 13px var(--f, system-ui); cursor: pointer; }
+#landing .lstr:hover { background: color-mix(in srgb, var(--navy) 7%, var(--surface)); }
+#landing .lstr:focus-visible { outline: 3px solid var(--tape-chiaro); outline-offset: 2px; }
+/* menu dell'account (2026-11-05): in alto a destra in ogni pagina; nel planner resta fermo con l'intestazione */
+#conto { position: absolute; top: 8px; right: 24px; z-index: 40; }
+body.con-planner #conto { position: fixed; top: 14px; right: 30px; }
+body.con-planner .top { padding-right: 84px; }
+@media (max-width: 1500px) { body.con-planner .qbox { width: 170px; } }
+.conto-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 10px 0 4px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); color: var(--ink); font: 500 13px var(--f, system-ui); cursor: pointer; box-shadow: 0 1px 3px rgba(21, 46, 73, .08); }
+.conto-btn:hover { border-color: var(--grid-strong); }
+.conto-btn:focus-visible { outline: 3px solid var(--tape-chiaro); outline-offset: 2px; }
+.conto-btn[aria-expanded="true"] { border-color: var(--navy); }
+.conto-ini { width: 32px; height: 32px; flex: none; border-radius: 50%; background: var(--navy); color: #fff; font: 700 14px/32px var(--f, system-ui); text-align: center; }
+.conto-ini.grande { width: 40px; height: 40px; font-size: 16px; line-height: 40px; }
+.conto-ruolo { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+body.con-planner .conto-ruolo, body.con-planner .conto-btn > svg { display: none; }
+body.con-planner .conto-btn { padding: 0 3px; }
+#menuConto { position: absolute; top: calc(100% + 6px); right: 0; width: 290px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(21, 46, 73, .18); overflow: hidden; }
+#menuConto .mc-chi { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--grid); }
+#menuConto .mc-chi div { display: grid; gap: 2px; min-width: 0; }
+#menuConto .mc-chi b { font: 700 15px var(--f, system-ui); color: var(--ink); }
+#menuConto .mc-nasc { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#menuConto .mc-chi div span { font-size: 12px; color: var(--muted); }
+#menuConto .mc-voce { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 16px; border: 0; background: transparent; color: var(--ink); font: 500 14px var(--f, system-ui); text-align: left; cursor: pointer; }
+#menuConto .mc-voce:hover, #menuConto .mc-voce:focus { background: var(--bg); outline: none; }
+#menuConto .mc-voce:focus-visible { box-shadow: inset 3px 0 0 var(--tape-chiaro); }
+.sedechip.fisso { cursor: default; }
+.sedechip.fisso:hover { background: var(--navy); }
+@media (max-width: 900px) {
+  body.con-planner #conto { position: absolute; top: 14px; right: 16px; }
+  body.con-planner .top { padding-right: 16px; }
+  body.con-planner .top .tabs { width: calc(100% - 64px); }
+}
+@media (max-width: 560px) {
+  #conto { right: 12px; }
+  .conto-ruolo { display: none; }
+  #menuConto { width: min(290px, calc(100vw - 24px)); }
+}

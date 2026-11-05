@@ -82,7 +82,8 @@ const Accesso = (() => {
     return box;
   }
   /** Nome della zona per il lettore di schermo, secondo quello che mostra. */
-  const vista = nome => { pagina().setAttribute('aria-label', nome); return box; };
+  // dopo ogni ridisegno della pagina (che ne sostituisce il contenuto) il menu dell'account torna al suo posto
+  const vista = nome => { pagina().setAttribute('aria-label', nome); if (nome !== 'Accesso') queueMicrotask(() => mostraConto()); return box; };
 
   /* Gestore: riquadro con le ore della cella (blu notte come i suggerimenti «i»); il testo lo prepara il server */
   let info = null, infoDi = null;
@@ -125,6 +126,7 @@ const Accesso = (() => {
   /* ---------------------------------------------- accesso */
   /** email: quella già scritta, che resta nel campo dopo un errore (il cursore va sulla password). */
   function mostraAccesso(modo = 'accedi', msg = '', ok = '', email0 = '') {
+    togliConto();
     const email = '<label>Email<input type="email" name="email" autocomplete="username" required maxlength="200"></label>';
     const M = {
       accedi: { sotto: 'Accedi con l’email e la password del tuo account.', pulsante: 'Accedi',
@@ -190,6 +192,17 @@ const Accesso = (() => {
   }
   const GEAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 
+  // strumenti del gruppo di sedi (2026-11-05): stessa misura, bordo blu notte, icona disegnata
+  const ICONA = {
+    gestore: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    persone: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+  };
+  function strumenti() {
+    const b = [];
+    if (vedeGestore()) b.push(`<button type="button" class="lstr" data-gestore="1">${ICONA.gestore}Gestore</button>`);
+    if (sediMie().length >= 2) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}Persone e sedi</button>`);
+    return b.length ? `<span class="lbtn">${b.join('')}</span>` : '';
+  }
   function landingHtml() {
     const last = ultima();
     const modifica = (id, nome) => `<div class="lcardi editing"><input type="text" maxlength="60" value="${esc(nome)}" data-edit="${id}" aria-label="Nome della carrozzeria">
@@ -205,7 +218,7 @@ const Accesso = (() => {
     const nuova = S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (puoAggiungere ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
     const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s));
     return `<div class="lcard"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>Scegli la carrozzeria: ognuna ha operai, vetture e impostazioni separati.</p></div>
-      <div class="lbar"><span>Accesso come <strong>${esc(S.utente.email)}</strong></span><span class="lbtn">${sediMie().length >= 2 ? '<button type="button" class="esci" data-persone="1">Persone e sedi</button>' : ''}${vedeGestore() ? '<button type="button" class="gestore-btn" data-gestore="1">Gestore</button>' : ''}<button type="button" class="esci" data-esci="1">Esci</button></span></div>
+      <div class="lbar"><h2 class="ltit">Le tue carrozzerie</h2>${strumenti()}</div>
       ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}
       ${vive().length || nuova ? `<div class="lgrid">${vive().map(card).join('')}${nuova}</div>`
         : '<p class="lnote">Non hai ancora accesso a nessuna carrozzeria: chiedi al titolare di aggiungerti.</p>'}
@@ -241,7 +254,6 @@ const Accesso = (() => {
     if (!S.utente) return;
     const t = ev.target.closest('button');
     if (!t) { if (S.menu) { S.menu = null; mostraElenco(); } return; }
-    if (t.dataset.esci) { await sb.auth.signOut(); S.utente = null; return mostraAccesso(); }
     if (t.dataset.gsChat) return apriChat(t.dataset.gsChat, t.dataset.gsTesto || '');
     if (t.dataset.gestore) return apriGestore();
     if (t.dataset.gsAggiorna) return apriGestore({}, true);
@@ -405,6 +417,7 @@ const Accesso = (() => {
     try { history.replaceState(null, '', location.pathname + location.search + '#c=' + id); } catch (e) { }
     if (box) { box.remove(); box = null; }
     if (ascolto) { sb.removeChannel(ascolto); ascolto = null; } // il gestore non ascolta più le versioni
+    sedeAperta = s; mostraConto();
     bootSede(s);
   }
 
@@ -632,6 +645,63 @@ const Accesso = (() => {
     } catch (e) { ricaricaPersone((fatte ? 'Aggiunto in ' + fatte + ' sedi, poi: ' : '') + testoErrore(e), '', fatte ? email : ''); }
   }
 
+  /* ---------------------------------------------- menu dell'account (2026-11-05, scelto dal titolare): in alto a destra in
+     tutte le pagine (carrozzerie, Gestore, planner) il cerchio con l'iniziale e l'email; il menu dice con quale account e
+     ruolo si è entrati e contiene «Esci». È della pagina di accesso, non del planning: il server non lo vede. */
+  let conto = null, menuConto = null, sedeAperta = null;
+  const FRECCIA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const ESCI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>';
+  // ruolo e dove (2026-11-05): l'email, spesso lunga, si legge passando con il mouse (title) e la sente il lettore di schermo
+  function chiSono() {
+    if (sedeAperta) return { ruolo: S.admin ? 'Amministratore' : RUOLI[sedeAperta.ruolo] || '', dove: sedeAperta.nome };
+    if (S.admin) return { ruolo: 'Amministratore', dove: 'tutte le carrozzerie' };
+    const v = vive(), ruoli = [...new Set(v.map(s => s.ruolo))];
+    return { ruolo: ruoli.length === 1 ? RUOLI[ruoli[0]] : 'Più ruoli', dove: v.length === 1 ? v[0].nome : v.length + ' sedi' };
+  }
+  function mostraConto() {
+    if (!S.utente) return togliConto();
+    if (!conto) {
+      conto = document.createElement('div'); conto.id = 'conto';
+      conto.addEventListener('click', ev => { if (ev.target.closest('[data-conto]')) { ev.stopPropagation(); apriMenuConto(!menuConto); } });
+      conto.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'ArrowDown' && !menuConto) { ev.preventDefault(); apriMenuConto(true); } });
+    }
+    const email = S.utente.email || '', chi = chiSono();
+    conto.innerHTML = `<button type="button" class="conto-btn" data-conto="1" aria-haspopup="menu" aria-expanded="${!!menuConto}" aria-controls="menuConto" title="${esc(email)}" aria-label="Account ${esc(email)}, ${esc(chi.ruolo)}">
+      <span class="conto-ini" aria-hidden="true">${esc(email.charAt(0).toUpperCase())}</span><span class="conto-ruolo" aria-hidden="true">${esc(chi.ruolo)}</span>${FRECCIA}</button>`;
+    // nella pagina delle carrozzerie scorre con la pagina (che sta sopra a tutto); nel planner resta fermo in alto
+    const dove = !sedeAperta && box && box.isConnected ? box : document.body; if (conto.parentNode !== dove) dove.appendChild(conto);
+    document.body.classList.toggle('con-planner', !!sedeAperta);
+  }
+  function togliConto() { chiudiMenuConto(false); if (conto) { conto.remove(); conto = null; } document.body.classList.remove('con-planner'); }
+  function apriMenuConto(si) {
+    if (!si) return chiudiMenuConto(true);
+    menuConto = document.createElement('div'); menuConto.id = 'menuConto'; menuConto.setAttribute('role', 'menu'); menuConto.setAttribute('aria-label', 'Account');
+    const email = S.utente.email || '', chi = chiSono();
+    menuConto.innerHTML = `<div class="mc-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc(email.charAt(0).toUpperCase())}</span>
+      <div><span class="mc-nasc">Account ${esc(email)}: </span><b>${esc(chi.ruolo)}</b><span>${esc(chi.dove)}</span></div></div>
+      <button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
+    conto.appendChild(menuConto);
+    conto.querySelector('[data-conto]').setAttribute('aria-expanded', 'true');
+    menuConto.addEventListener('click', async ev => {
+      ev.stopPropagation();
+      if (ev.target.closest('[data-conto-esci]')) { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } await sb.auth.signOut(); location.reload(); }
+    });
+    menuConto.addEventListener('keydown', ev => {
+      const voci = [...menuConto.querySelectorAll('[role=menuitem]')], i = voci.indexOf(document.activeElement);
+      if (ev.key === 'Escape') { ev.preventDefault(); chiudiMenuConto(true); }
+      else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); voci[(i + (ev.key === 'ArrowDown' ? 1 : voci.length - 1)) % voci.length].focus(); }
+      else if (ev.key === 'Tab') chiudiMenuConto(false);
+    });
+    menuConto.querySelector('[role=menuitem]').focus();
+    setTimeout(() => document.addEventListener('click', fuoriConto, true));
+  }
+  function fuoriConto(ev) { if (conto && !conto.contains(ev.target)) chiudiMenuConto(false); }
+  function chiudiMenuConto(fuoco) {
+    document.removeEventListener('click', fuoriConto, true);
+    if (menuConto) { menuConto.remove(); menuConto = null; }
+    const b = conto && conto.querySelector('[data-conto]'); if (b) { b.setAttribute('aria-expanded', 'false'); if (fuoco) b.focus(); }
+  }
+
   /* ---------------------------------------------- avvio */
   let passwordFatta = false;
   async function avvia(ok = '') {
@@ -655,7 +725,6 @@ const Accesso = (() => {
     const b = ev.target.closest && ev.target.closest('.sedechip[data-sola]'); if (!b) return;
     ev.preventDefault(); ev.stopPropagation();
     try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { }
-    if (b.dataset.sola === 'esci') { await sb.auth.signOut(); location.reload(); return; }
     try { sessionStorage.setItem('planning-elenco', '1'); } catch (e) { }
     location.reload();
   }, true);
