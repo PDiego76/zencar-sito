@@ -208,7 +208,7 @@ function accendi(els) {
   if (!vis.length || vis.length > MAX_EVIDENZE || !Element.prototype.animate) return;
   // un blocco intero nuovo (altra scheda, sezione che compare) è un cambio di pagina, non un valore cambiato
   if (vis.some(e => { const r = e.getBoundingClientRect(); return r.height > 96 || r.width * r.height > 90000; })) return;
-  const t = getComputedStyle(document.documentElement).getPropertyValue('--tape').trim() || '#B85A08';
+  const t = getComputedStyle(document.documentElement).getPropertyValue('--tape-chiaro').trim() || '#D9690B';
   const luce = 'color-mix(in srgb, ' + t + ' 30%, transparent)';
   for (const e of vis) {
     // acceso per un attimo, poi sfuma fino al colore normale dell'elemento (ultimo fotogramma implicito)

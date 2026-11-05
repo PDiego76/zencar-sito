@@ -205,7 +205,7 @@ const Accesso = (() => {
     const nuova = S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (puoAggiungere ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
     const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s));
     return `<div class="lcard"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>Scegli la carrozzeria: ognuna ha operai, vetture e impostazioni separati.</p></div>
-      <div class="lbar"><span>Accesso come <strong>${esc(S.utente.email)}</strong></span><span class="lbtn">${vedeGestore() ? '<button type="button" class="gestore-btn" data-gestore="1">Gestore</button>' : ''}<button type="button" class="esci" data-esci="1">Esci</button></span></div>
+      <div class="lbar"><span>Accesso come <strong>${esc(S.utente.email)}</strong></span><span class="lbtn">${sediMie().length >= 2 ? '<button type="button" class="esci" data-persone="1">Persone e sedi</button>' : ''}${vedeGestore() ? '<button type="button" class="gestore-btn" data-gestore="1">Gestore</button>' : ''}<button type="button" class="esci" data-esci="1">Esci</button></span></div>
       ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}
       ${vive().length || nuova ? `<div class="lgrid">${vive().map(card).join('')}${nuova}</div>`
         : '<p class="lnote">Non hai ancora accesso a nessuna carrozzeria: chiedi al titolare di aggiungerti.</p>'}
@@ -257,6 +257,7 @@ const Accesso = (() => {
     if (t.dataset.cancel) { S.modifica = null; return mostraElenco(); }
     if (t.dataset.save) return salvaNome(t.dataset.save);
     if (t.dataset.utenti) return apriUtenti(t.dataset.utenti);
+    if (t.dataset.persone) return apriPersone();
     try {
       if (t.dataset.del) {
         const s = voce(t.dataset.del);
@@ -479,6 +480,89 @@ const Accesso = (() => {
       const dove = r.carrozzerie > 1 ? ' in ' + r.carrozzerie + ' carrozzerie' : ' alla carrozzeria';
       disegnaUtenti('', r.esito === 'invitato' ? 'Invito inviato a ' + email + ': riceverà un’email per scegliere la password. Aggiunto' + dove + '.' : email + ' aggiunto' + dove + '.');
     } catch (e) { disegnaUtenti(testoErrore(e)); }
+  }
+
+  /* ---------------------------------------------- persone e sedi (2026-11-05): chi lavora in quali carrozzerie, con quale
+     ruolo, in una tabella sola. Per il titolare di più sedi e l'amministratore. Stesse funzioni della finestra Utenti
+     (utenti_carrozzeria, membri, funzione utenti): i permessi li controlla il database. */
+  let dlgP = null;
+  const sediMie = () => vive().filter(titolareDi);
+  function finestraPersone() {
+    if (!dlgP) {
+      dlgP = document.createElement('dialog'); dlgP.id = 'dlgPersone'; dlgP.setAttribute('aria-label', 'Persone e sedi');
+      document.body.appendChild(dlgP);
+      dlgP.addEventListener('click', ev => { if (ev.target.closest('[data-x]')) dlgP.close(); });
+      dlgP.addEventListener('change', ev => { const s = ev.target.closest('[data-pc]'); if (s) ruoloInSede(s); });
+      dlgP.addEventListener('submit', ev => { ev.preventDefault(); aggiungiPersona(ev.target); });
+      dlgP.addEventListener('keydown', ev => ev.stopPropagation());
+    }
+    return dlgP;
+  }
+  async function apriPersone() {
+    const d = finestraPersone();
+    d.innerHTML = `<div class="dh"><h3>Persone e sedi</h3><button class="x" type="button" data-x="1" aria-label="Chiudi">×</button></div><div class="db"><p class="lnote">Caricamento…</p></div>`;
+    if (!d.open) d.showModal();
+    await disegnaPersone();
+  }
+  async function leggiPersone() {
+    const sedi = sediMie(), persone = new Map();
+    const elenchi = await Promise.all(sedi.map(s => sb.rpc('utenti_carrozzeria', { c: s.id })));
+    elenchi.forEach((r, i) => {
+      if (r.error) throw r.error;
+      for (const u of r.data) {
+        const p = persone.get(u.user_id) || { id: u.user_id, email: u.email, attivo: u.attivo, admin: u.amministratore, ruoli: {} };
+        p.ruoli[sedi[i].id] = u.ruolo; p.attivo = p.attivo || u.attivo; persone.set(u.user_id, p);
+      }
+    });
+    // prima l'amministratore, poi per email
+    return { sedi, persone: [...persone.values()].sort((a, b) => (b.admin - a.admin) || a.email.localeCompare(b.email, 'it')) };
+  }
+  async function disegnaPersone(msg = '', ok = '') {
+    let dati; try { dati = await leggiPersone(); } catch (e) { msg = testoErrore(e); }
+    const opz = r => `<option value=""${r ? '' : ' selected'}>—</option>` + Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${k === r ? ' selected' : ''}>${n}</option>`).join('');
+    const tabella = !dati ? '' : `<div class="p-scorri"><table class="p-tab"><thead><tr><th scope="col">Persona</th>${dati.sedi.map(s => `<th scope="col">${esc(s.nome)}</th>`).join('')}</tr></thead><tbody>
+      ${dati.persone.map(p => `<tr><th scope="row"><span class="mail">${esc(p.email)}</span>${p.id === S.utente.id ? '<span class="u-tu">tu</span>' : ''}${p.attivo ? '' : '<span class="u-stato attesa">Invito in attesa</span>'}</th>
+        ${dati.sedi.map(s => p.admin ? '<td class="p-admin">Amministratore</td>'
+          : `<td${p.ruoli[s.id] ? '' : ' class="p-no"'}><select data-pc="${s.id}" data-pu="${p.id}" data-pe="${esc(p.email)}" data-pr="${p.ruoli[s.id] || ''}" aria-label="Ruolo di ${esc(p.email)} in ${esc(s.nome)}">${opz(p.ruoli[s.id] || '')}</select></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    const sedi = dati ? dati.sedi : sediMie();
+    dlgP.querySelector('.db').innerHTML = `${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
+      <p class="lnote">Chi lavora in quali carrozzerie e con quale ruolo. Scegli «—» per togliere una persona da una sede. Ogni cambiamento vale subito.</p>
+      ${tabella}
+      <form class="invita u-sez" novalidate aria-labelledby="pAggiungi"><h4 id="pAggiungi">Aggiungi una persona a più sedi</h4>
+        <div class="u-campi"><label>Email<input type="email" name="email" maxlength="200" required autocomplete="off" placeholder="nome@esempio.it"></label>
+        <label>Ruolo<select name="ruolo">${Object.entries(RUOLI).map(([k, n]) => `<option value="${k}"${k === 'accettazione' ? ' selected' : ''}>${n}</option>`).join('')}</select></label><button type="submit" class="btn pri">Aggiungi</button></div>
+        <fieldset class="p-sedi"><legend>Sedi</legend>${sedi.map(s => `<label><input type="checkbox" name="sede" value="${s.id}"> ${esc(s.nome)}</label>`).join('')}</fieldset>
+        <p class="lnote">Se l’email non ha ancora un account, la persona riceve un invito da planner@zencar.it per scegliere la password.</p></form>`;
+  }
+  async function ruoloInSede(sel) {
+    const c = sel.dataset.pc, u = sel.dataset.pu, prima = sel.dataset.pr, ruolo = sel.value, io = u === S.utente.id, nome = (voce(c) || {}).nome || '';
+    if (!ruolo && !confirm(io ? 'Togliendoti da ' + nome + ' perderai l’accesso a questa carrozzeria. Continuare?' : 'Togliere ' + sel.dataset.pe + ' da ' + nome + '?')) { sel.value = prima; return; }
+    if (io && ruolo && ruolo !== 'titolare' && !confirm('Cambiando il tuo ruolo in ' + nome + ' non potrai più gestirne utenti e impostazioni. Continuare?')) { sel.value = prima; return; }
+    try {
+      if (!prima) await chiamaFunzione('utenti', { carrozzeria_id: c, email: sel.dataset.pe, ruolo, indirizzo: indirizzo() });
+      else {
+        const q = sb.from('membri');
+        const { error } = ruolo ? await q.update({ ruolo }).eq('carrozzeria_id', c).eq('user_id', u) : await q.delete().eq('carrozzeria_id', c).eq('user_id', u);
+        if (error) throw error;
+      }
+      if (io) { dlgP.close(); return aggiorna(); }
+      disegnaPersone('', !ruolo ? sel.dataset.pe + ' tolto da ' + nome + '.' : !prima ? sel.dataset.pe + ' aggiunto a ' + nome + '.' : 'Ruolo in ' + nome + ' aggiornato.');
+    } catch (e) {
+      const m = e.message || '';
+      disegnaPersone(/almeno un titolare/i.test(m) ? 'Ogni carrozzeria deve avere almeno un titolare.' : /amministratore/i.test(m) ? 'L’amministratore non può cambiare ruolo né essere rimosso.' : testoErrore(e));
+    }
+  }
+  async function aggiungiPersona(form) {
+    const campi = new FormData(form), email = String(campi.get('email') || '').trim(), ruolo = String(campi.get('ruolo')), sedi = campi.getAll('sede').map(String);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return disegnaPersone('Scrivi un’email valida.');
+    if (!sedi.length) return disegnaPersone('Spunta almeno una sede.');
+    form.querySelector('[type=submit]').disabled = true;
+    let invitato = false, fatte = 0;
+    try {
+      // una sede alla volta: la prima invita (se serve), le altre aggiungono la persona già registrata
+      for (const c of sedi) { const r = await chiamaFunzione('utenti', { carrozzeria_id: c, email, ruolo, indirizzo: indirizzo() }); invitato = invitato || r.esito === 'invitato'; fatte++; }
+      disegnaPersone('', (invitato ? 'Invito inviato a ' + email + '. ' : '') + email + ' aggiunto come ' + RUOLI[ruolo] + ' in ' + fatte + (fatte === 1 ? ' sede.' : ' sedi.'));
+    } catch (e) { disegnaPersone((fatte ? 'Aggiunto in ' + fatte + ' sedi, poi: ' : '') + testoErrore(e)); }
   }
 
   /* ---------------------------------------------- avvio */
