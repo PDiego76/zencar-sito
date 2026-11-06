@@ -391,3 +391,20 @@ body.con-planner .conto-btn { padding: 0 3px; }
 #dlgPersone .p-lente { position: absolute; left: 10px; width: 15px; height: 15px; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; pointer-events: none; }
 #dlgPersone .p-cerca input[type=search] { padding-left: 32px; }
 #dlgPersone .p-vuoto .btn { display: block; margin-top: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* nome delle persone (2026-11-06): nome sopra, email sotto; campo del nome nella scheda e nel modulo */
+#dlgPersone .p-mail2 { display: block; font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; margin-bottom: 2px; }
+#dlgPersone .p-nomecampo { display: grid; gap: 4px; max-width: 420px; font: 500 13px var(--f, system-ui); color: var(--ink); }
+#dlgPersone .p-nomecampo input { width: 100%; height: 38px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6px; padding: 0 10px; background: var(--surface); color: var(--ink); font: 400 14px var(--f, system-ui); }
+#dlgPersone .p-nomecampo input:focus { border-color: var(--tape-chiaro); outline: none; box-shadow: 0 0 0 1px var(--tape-chiaro); }
+#dlgPersone .p-nomecampo .p-dasalvare { justify-self: start; margin-left: 0; }
+#dlgPersone .p-fac { font-weight: 400; color: var(--muted); }
+/* simulazione dei ruoli (2026-11-06): icona con l'anello ambra; un clic riporta all'amministratore */
+.conto-btn.simula { border: 2px solid #E9B90C; background: #FFF6DA; }
+.conto-btn.simula .conto-ini { background: #8A5A00; }
+.conto-torna { font-size: 12px; font-weight: 700; color: #8A5A00; white-space: nowrap; }
+body.con-planner .conto-btn.simula .conto-torna, body.con-planner .conto-btn.simula .conto-ruolo { display: none; }
+#menuConto .mc-sez { display: grid; gap: 2px; padding: 8px 6px; border-top: 1px solid var(--line); }
+#menuConto .mc-tit { font: 700 11px var(--f, system-ui); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 2px 10px 4px; }
+#menuConto .mc-ruolo { padding-left: 14px; min-height: 36px; }
+#menuConto .mc-nota { font-size: 11.5px; color: var(--muted); padding: 4px 10px 0; line-height: 1.35; }
+#menuConto .mc-nome { display: block; }

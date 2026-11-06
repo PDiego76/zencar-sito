@@ -1242,3 +1242,5 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .manuale .mcorpo{display:grid;gap:22px}
 .manuale section.capitolo{scroll-margin-top:90px}
 .manuale .mdopo{justify-self:end}
+/* simulazione dei ruoli dell'amministratore (2026-11-06) */
+.solaconsulta.simula{border-color:#E9B90C;background:#FFF6DA;color:#8A5A00}

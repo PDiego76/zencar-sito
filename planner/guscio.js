@@ -96,7 +96,7 @@ async function richiesta(eventi) {
     let vista = null; try { vista = JSON.parse(sessionStorage.getItem('vista') || 'null'); } catch (e) { }
     const prefs = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^planning-vista/.test(k)) prefs[k] = localStorage.getItem(k); } } catch (e) { }
     const corpo = { carrozzeria_id: C.voce.id, uiBase: C.uiBase || (C.primo && vista) || null, catena: C.catena, eventi, imp: C.imp, annulla: C.annulla,
-      impronte: C.impronte, primo: C.primo, sola: C.voce.sola || null, prefs, larghezza: innerWidth, altezza: innerHeight, ora: window.__ORA_FINTA || null };
+      impronte: C.impronte, primo: C.primo, sola: C.voce.sola || null, simula: C.voce.simula || null, prefs, larghezza: innerWidth, altezza: innerHeight, ora: window.__ORA_FINTA || null };
     const r = await fetch(window.CONFIG.url + '/functions/v1/planner', { method: 'POST', body: JSON.stringify(corpo),
       headers: { 'Content-Type': 'application/json', apikey: window.CONFIG.chiave, Authorization: 'Bearer ' + session.access_token } });
     const d = await r.json().catch(() => ({ errore: 'Risposta non leggibile dal server.' }));
