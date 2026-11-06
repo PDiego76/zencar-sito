@@ -440,7 +440,8 @@ const Accesso = (() => {
   // una sola domanda, che dice chiaramente cosa fa «OK»
   const domandaScarta = (n, chi) => (n === 1 ? 'Hai 1 modifica non salvata' : 'Hai ' + n + ' modifiche non salvate') + (chi ? ' per ' + chi : '') + '.\nOK = scartale, Annulla = continua a modificare.';
   let dlgP = null;
-  const P = { dati: null, scelta: null, cerca: '', filtro: '', bozza: null };
+  const P = { dati: null, scelta: null, cerca: '', filtro: '', bozza: null, email: '' };
+  const pareEmail = t => /^[^s@]+@[^s@]+.[^s@]+$/.test(t);
   const sediMie = () => vive().filter(titolareDi);
   function finestraPersone() {
     if (!dlgP) {
@@ -450,7 +451,10 @@ const Accesso = (() => {
         if (ev.target.closest('[data-x]')) { if (lasciaBozza()) dlgP.close(); return; } // niente chiusura con un clic sullo sfondo
         // il cursore resta sempre al posto giusto: sulla persona scelta, sul campo email, sulla prima spunta
         const v = ev.target.closest('[data-psel]'); if (v) { if (v.dataset.psel !== P.scelta && lasciaBozza()) { P.scelta = v.dataset.psel; P.bozza = null; schedaPersone('', '', '.p-voce.on'); } return; }
-        if (ev.target.closest('[data-pnuova]')) { if (lasciaBozza()) { P.scelta = 'nuova'; P.bozza = null; schedaPersone('', '', '.p-form [name=email]'); } return; }
+        // dalla ricerca senza risultati (2026-11-06): l'email cercata passa nel modulo, il cursore va sul ruolo
+        const nu = ev.target.closest('[data-pnuova]');
+        if (nu) { if (lasciaBozza()) { P.scelta = 'nuova'; P.bozza = null; P.email = nu.dataset.pemail || ''; schedaPersone('', '', P.email ? '.p-form [name=ruolo]' : '.p-form [name=email]'); } return; }
+        if (ev.target.closest('[data-pvedi]')) { if (lasciaBozza()) { P.filtro = ''; P.bozza = null; schedaPersone('', '', '[data-pcerca]'); } return; }
         if (ev.target.closest('[data-ptutte]')) { const b = bozza(); if (b) { for (const c in b) b[c] = ''; schedaPersone('', '', '[data-psalva]'); } return; }
         if (ev.target.closest('[data-pannulla]')) { P.bozza = null; return schedaPersone('', '', '[data-psede]'); }
         if (ev.target.closest('[data-psalva]')) return salvaBozza();
@@ -472,7 +476,7 @@ const Accesso = (() => {
   // sede: '' = tutte; dall'ingranaggio di una carrozzeria la finestra parte filtrata su quella
   async function apriPersone(sede = '') {
     const d = finestraPersone();
-    P.dati = null; P.scelta = null; P.cerca = ''; P.bozza = null; P.filtro = sede || '';
+    P.dati = null; P.scelta = null; P.cerca = ''; P.bozza = null; P.email = ''; P.filtro = sede || '';
     d.innerHTML = `<div class="dh"><h3>Persone</h3><button class="x" type="button" data-x="1" aria-label="Chiudi">×</button></div><div class="db"><p class="lnote">Caricamento…</p></div>`;
     if (!d.open) d.showModal();
     await ricaricaPersone();
@@ -512,7 +516,14 @@ const Accesso = (() => {
   function filtraElenco() {
     const q = P.cerca.trim().toLowerCase(); let n = 0;
     dlgP.querySelectorAll('.p-voce').forEach(v => { v.hidden = !!q && !v.textContent.toLowerCase().includes(q); if (!v.hidden) n++; });
-    const vuoto = dlgP.querySelector('.p-vuoto'); if (vuoto) { vuoto.hidden = n > 0; vuoto.textContent = q ? 'Nessuna persona trovata per «' + P.cerca.trim() + '».' : 'Nessuna persona in questa sede.'; }
+    const vuoto = dlgP.querySelector('.p-vuoto'); if (!vuoto) return;
+    vuoto.hidden = n > 0; if (n) { vuoto.textContent = ''; return; }
+    const t = P.cerca.trim();
+    if (!q) { vuoto.textContent = 'Nessuna persona in questa sede.'; return; }
+    // trovata solo fuori dal filtro: meglio mostrarla che aggiungerla di nuovo
+    const altrove = P.filtro && P.dati.persone.some(p => !visibile(p) && p.email.toLowerCase().includes(q));
+    vuoto.innerHTML = altrove ? `Nessuna persona trovata in questa sede per «${esc(t)}», ma c’è in altre sedi.<button type="button" class="btn sm" data-pvedi="1">Mostra tutte le sedi</button>`
+      : `Nessuna persona trovata per «${esc(t)}».${pareEmail(t) ? `<button type="button" class="btn sm pri" data-pnuova="1" data-pemail="${esc(t)}">+ Aggiungi ${esc(t)}</button>` : '<button type="button" class="btn sm" data-pnuova="1">+ Aggiungi una persona</button>'}`;
   }
   // ruoli della persona scelta come appaiono nella scheda: la bozza, se c'è, altrimenti quelli salvati
   function bozza() {
@@ -541,7 +552,7 @@ const Accesso = (() => {
       // ordine: chi, con quale ruolo, in quali sedi, poi «Aggiungi»; con il filtro (o una sola sede) la sede è già spuntata
       const spuntata = s => una || s.id === P.filtro;
       destra = `<form class="p-form" novalidate aria-labelledby="pNuova"><h4 id="pNuova">Aggiungi una persona</h4>
-        <div class="p-campi2"><label>Email<input type="email" name="email" maxlength="200" required autocomplete="off" placeholder="nome@esempio.it"></label>
+        <div class="p-campi2"><label>Email<input type="email" name="email" maxlength="200" required autocomplete="off" placeholder="nome@esempio.it" value="${esc(P.email)}"></label>
         <label>Ruolo<select name="ruolo">${ruoliOpz('accettazione')}</select></label></div>
         <p class="u-spiega" data-spiega aria-live="polite"><strong>${RUOLI.accettazione}</strong>: ${esc(SPIEGA.accettazione)}</p>
         ${una ? `<input type="hidden" name="sede" value="${d.sedi[0].id}">` : `<fieldset class="p-sedi"><legend>Sedi in cui lavora</legend>${sediOrd.map(s => `<label><input type="checkbox" name="sede" value="${s.id}"${spuntata(s) ? ' checked' : ''}> ${esc(s.nome)}</label>`).join('')}</fieldset>`}
@@ -574,7 +585,7 @@ const Accesso = (() => {
     const filtro = una ? '' : `<label class="p-filtro"><span>Sede</span><select data-pfiltro="1"><option value="">Tutte le sedi</option>${d.sedi.map(s => `<option value="${s.id}"${s.id === P.filtro ? ' selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>`;
     dlgP.querySelector('.dh h3').textContent = una ? 'Persone – ' + d.sedi[0].nome : nomeFiltro ? 'Persone – ' + nomeFiltro : 'Persone';
     dlgP.querySelector('.db').innerHTML = `${msg ? `<p class="lerr" role="alert">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
-      <div class="p-due"><div class="p-elenco"><div class="p-cerca"><label class="p-q"><span class="p-nasc">Cerca</span><input type="search" data-pcerca="1" placeholder="Cerca per email…" value="${esc(P.cerca)}" autocomplete="off"></label>
+      <div class="p-due"><div class="p-elenco"><div class="p-cerca"><label class="p-q"><span class="p-nasc">Cerca</span><svg class="p-lente" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><circle cx="6.8" cy="6.8" r="4.8"/><path d="m10.4 10.4 4 4"/></svg><input type="search" data-pcerca="1" placeholder="Cerca per email…" value="${esc(P.cerca)}" autocomplete="off"></label>
         <button type="button" class="btn sm pri" data-pnuova="1">+ Aggiungi</button>${filtro}</div><div class="p-lista">${elenco}<p class="p-vuoto" hidden></p></div></div>
       <div class="p-scheda">${destra}</div></div>`;
     filtraElenco();
@@ -633,7 +644,7 @@ const Accesso = (() => {
     try {
       // una sede alla volta: la prima invita (se serve), le altre aggiungono la persona già registrata
       for (const c of sedi) { const r = await chiamaFunzione('utenti', { carrozzeria_id: c, email, ruolo, indirizzo: indirizzo() }); invitato = invitato || r.esito === 'invitato'; fatte++; }
-      ricaricaPersone('', (invitato ? 'Invito inviato a ' + email + '. ' : '') + email + ' aggiunto come ' + RUOLI[ruolo] + (sedi.length > 1 ? ' in ' + fatte + ' sedi.' : '.'), email);
+      P.email = ''; ricaricaPersone('', (invitato ? 'Invito inviato a ' + email + '. ' : '') + email + ' aggiunto come ' + RUOLI[ruolo] + (sedi.length > 1 ? ' in ' + fatte + ' sedi.' : '.'), email);
     } catch (e) {
       if (fatte) return ricaricaPersone('Aggiunto in ' + fatte + (fatte === 1 ? ' sede' : ' sedi') + ', poi: ' + testoErrore(e), '', email);
       invia.disabled = false; invia.textContent = 'Aggiungi';

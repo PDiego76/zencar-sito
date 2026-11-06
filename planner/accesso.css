@@ -386,3 +386,8 @@ body.con-planner .conto-btn { padding: 0 3px; }
 #dlgPersone .p-filtro select { width: 100%; text-overflow: ellipsis; }
 #dlgPersone .p-elenco { overflow: hidden; }
 #dlgPersone .p-cerca .p-filtro { flex: 1 1 100%; display: flex; }
+/* ricerca con la lente; ricerca senza risultati: «+ Aggiungi …» nell'elenco (2026-11-06) */
+#dlgPersone .p-q { position: relative; align-items: center; }
+#dlgPersone .p-lente { position: absolute; left: 10px; width: 15px; height: 15px; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; pointer-events: none; }
+#dlgPersone .p-cerca input[type=search] { padding-left: 32px; }
+#dlgPersone .p-vuoto .btn { display: block; margin-top: 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
