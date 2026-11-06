@@ -1226,3 +1226,19 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 /* caselle delle ore vendute: basta il contorno del riquadro intero (.cv-vin:focus-within), non un secondo contorno tagliato */
 .cv-vin input:focus-visible{outline:none!important}
 .cv-vin:focus-within{outline:3px solid var(--focus);outline-offset:2px}
+/* Impostazioni → Documentazione (2026-11-06): parti del manuale, poi il testo (stile del manuale nel riquadro .manuale) */
+.docbar{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px}
+.docparti{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 520px;min-width:0}
+.docp{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 12px;min-height:44px;border:1px solid var(--line);border-radius:var(--rb);background:var(--surface);color:var(--ink);font:inherit;font-size:13px;cursor:pointer;text-align:left}
+.docp b{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tape)}
+.docp:hover{border-color:var(--tape-chiaro)}
+.docp.on{border-color:var(--tape-chiaro);box-shadow:inset 0 0 0 1px var(--tape-chiaro)}
+.manuale{display:grid;gap:22px;max-width:1000px;font-family:var(--f-testo);font-size:16px;line-height:1.6;color:var(--ink);scroll-margin-top:90px}
+.manuale .mtesta{background:var(--navy);color:#fff;border-radius:10px;padding:22px 26px;display:grid;gap:8px}
+.manuale .mtesta .num{color:#fff;opacity:.75}
+.manuale .mtit{font-size:28px;font-weight:800;color:#fff}
+.manuale .mcap{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px}
+.manuale .mcap a{color:#fff;opacity:.85;font-size:14px}
+.manuale .mcorpo{display:grid;gap:22px}
+.manuale section.capitolo{scroll-margin-top:90px}
+.manuale .mdopo{justify-self:end}

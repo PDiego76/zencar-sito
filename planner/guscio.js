@@ -388,8 +388,9 @@ document.addEventListener('keydown', ev => {
 });
 
 /* ---------------- file: scelta, estrazione del testo, download ---------------- */
-function scarica({ nome, tipo, testo }) {
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([testo], { type: tipo || 'application/octet-stream' }));
+function scarica({ nome, tipo, testo, base64 }) {
+  const dati = base64 ? Uint8Array.from(atob(base64), c => c.charCodeAt(0)) : testo;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([dati], { type: tipo || 'application/octet-stream' }));
   a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 function caricaScript(src) {
