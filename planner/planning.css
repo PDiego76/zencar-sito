@@ -1219,3 +1219,10 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 /* «Usa il meccanico» (2026-11-05): suggerimento nella riga degli operai del giorno, colore della meccanica */
 .dops .mecsug{background:#fff;border:1px dashed var(--c-mec);color:var(--ink);font:600 12px var(--f);padding:3px 10px}
 .dops .mecsug::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--c-mec);margin-right:6px}
+/* focus da tastiera preciso (2026-11-06). I gruppi .seg tagliano ciò che esce dai bordi (angoli arrotondati): il contorno sta
+   DENTRO il pulsante, arancione sui pulsanti chiari e bianco su quello già scelto (arancione pieno, dove l'arancione non si vede) */
+.seg button:focus-visible{outline:none!important;box-shadow:inset 0 0 0 2px var(--focus)}
+.seg button[aria-pressed="true"]:focus-visible{box-shadow:inset 0 0 0 2px var(--tape),inset 0 0 0 4px #fff}
+/* caselle delle ore vendute: basta il contorno del riquadro intero (.cv-vin:focus-within), non un secondo contorno tagliato */
+.cv-vin input:focus-visible{outline:none!important}
+.cv-vin:focus-within{outline:3px solid var(--focus);outline-offset:2px}
