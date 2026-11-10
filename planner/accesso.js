@@ -180,6 +180,9 @@ const Accesso = (() => {
     if (error) throw error;
     S.admin = adm.data === true; S.nome = nome.data || '';
     try { const r = sessionStorage.getItem(SIMULA) || ''; S.simula = S.admin && RUOLI[r] ? r : ''; } catch (e) { S.simula = ''; }
+    // consumi del piano (2026-11-10): solo l'amministratore; se la lettura non riesce la pagina resta com'è
+    S.consumi = null;
+    if (S.admin) { const k = await sb.rpc('consumi_piano'); S.consumi = k.error ? null : k.data; }
     S.voci = data.filter(r => r.carrozzerie).map(r => Object.assign({}, r.carrozzerie, { ruolo: r.ruolo }))
       .sort((a, b) => (a.numero ?? 1e9) - (b.numero ?? 1e9) || a.nome.localeCompare(b.nome, 'it'));
   }
@@ -207,6 +210,18 @@ const Accesso = (() => {
     if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}Persone</button>`);
     return b.length ? `<span class="lbtn">${b.join('')}</span>` : '';
   }
+  /** Consumi del mese rispetto al piano gratuito di Supabase: numeri, percentuali e avviso arrivano già pronti dal database. */
+  function consumiHtml() {
+    const k = S.consumi; if (!k || !Array.isArray(k.voci)) return '';
+    const voce = v => `<li${v.alto ? ' class="alto"' : ''}><span class="lc-nome">${esc(v.nome)}</span>
+      <span class="lc-barra" aria-hidden="true"><i style="width:${Math.min(100, Number(v.perc) || 0)}%"></i></span>
+      <span class="lc-val">${esc(v.uso)} di ${esc(v.limite)} · <b>${esc(String(v.perc))}%</b></span></li>`;
+    const sedi = (k.sedi || []).length ? `<table class="lc-sedi"><caption>Chi consuma di più</caption><thead><tr><th scope="col">Carrozzeria</th><th scope="col">Chiamate</th><th scope="col">Traffico</th></tr></thead>
+      <tbody>${k.sedi.map(x => `<tr><td>${esc(x.nome)}</td><td>${esc(x.richieste)}</td><td>${esc(x.traffico)}</td></tr>`).join('')}</tbody></table>` : '';
+    return `<details class="lcons"${k.avviso ? ' open' : ''}><summary>Consumi del piano gratuito · ${esc(k.mese)}</summary>
+      ${k.avviso ? `<p class="lerr" role="alert">${esc(k.avviso)}</p>` : ''}<ul>${k.voci.map(voce).join('')}</ul>${sedi}
+      <p class="lnote">Conteggi del planner e del Gestore dal primo del mese. Il traffico è stimato per eccesso; i numeri esatti sono nella dashboard di Supabase, pagina Usage.</p></details>`;
+  }
   function landingHtml() {
     const last = ultima();
     const modifica = (id, nome) => `<div class="lcardi editing"><input type="text" maxlength="60" value="${esc(nome)}" data-edit="${id}" aria-label="Nome della carrozzeria">
@@ -223,7 +238,7 @@ const Accesso = (() => {
     const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s));
     return `<div class="lcard"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>Scegli la carrozzeria: ognuna ha operai, vetture e impostazioni separati.</p></div>
       <div class="lbar"><h2 class="ltit">Le tue carrozzerie</h2>${strumenti()}</div>
-      ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}
+      ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}${consumiHtml()}
       ${vive().length || nuova ? `<div class="lgrid">${vive().map(card).join('')}${nuova}</div>`
         : '<p class="lnote">Non hai ancora accesso a nessuna carrozzeria: chiedi al titolare di aggiungerti.</p>'}
       ${gone.length ? `<details class="lgone"><summary>Carrozzerie eliminate (${gone.length})</summary><p class="lnote">Restano recuperabili finché non le elimini definitivamente.</p>
@@ -338,7 +353,7 @@ const Accesso = (() => {
 
   /* ------------- gestore: messaggi con una carrozzeria. La conversazione la prepara il server; qui solo finestra e invio */
   // richiestaChat: solo la risposta più recente si mostra; invio: numero della richiesta di invio ancora in viaggio
-  let chat = null, chatId = '', ascolto = null, contaAttesa = 0, richiestaChat = 0, invio = 0;
+  let chat = null, chatId = '', ascolto = null, contaAttesa = 0, ultimiContatori = 0, richiestaChat = 0, invio = 0;
   function finestraChat() {
     if (chat) return chat;
     chat = document.createElement('dialog'); chat.id = 'gsChat'; chat.className = 'gs-chatdlg'; chat.setAttribute('aria-labelledby', 'gsChatTitolo'); document.body.appendChild(chat);
@@ -401,8 +416,13 @@ const Accesso = (() => {
       const c = p.new && p.new.carrozzeria_id;
       // durante un invio non serve: la risposta dell'invio porta già la conversazione aggiornata
       if (chat && chat.open && c === chatId) return invio ? undefined : caricaChat({ azione: 'chat', id: chatId, ora: window.__ORA_FINTA || null }, false, true);
-      clearTimeout(contaAttesa);
-      contaAttesa = setTimeout(() => { if (box && box.querySelector('.gestore .gs-head')) aggiornaContatori(); }, 1500);
+      // contatori al massimo una volta al minuto (2026-11-10): con molte sedi i salvataggi arrivano di continuo,
+      // e ognuno costerebbe una chiamata; le modifiche arrivate nell'attesa entrano tutte nella lettura successiva
+      if (contaAttesa) return;
+      contaAttesa = setTimeout(() => {
+        contaAttesa = 0; ultimiContatori = Date.now();
+        if (box && box.querySelector('.gestore .gs-head')) aggiornaContatori();
+      }, Math.max(1500, ultimiContatori + (window.__CONTATORI_OGNI ?? 60 * 1000) - Date.now()));
     }).subscribe();
   }
 
