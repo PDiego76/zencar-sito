@@ -34,7 +34,7 @@ const Accesso = (() => {
     gestore: 'supervisiona dal Gestore e scrive i messaggi; nella carrozzeria vede tutto, importi compresi, senza modificare'
   };
   const PW_MIN = 10;
-  const S = { utente: null, voci: [], menu: null, modifica: null, msg: '', ok: '', admin: false, nome: '', simula: '' };
+  const S = { utente: null, voci: [], menu: null, modifica: null, msg: '', ok: '', admin: false, nome: '', simula: '', gruppi: [], ordine: [], modGruppo: null, nomeGruppo: undefined, eliminate: false, annuncio: '' };
   // simulazione (2026-11-06): l'amministratore vede il planner come un altro ruolo, senza salvare; vale per la scheda del browser
   const SIMULA = 'zencar-simula';
   const simula = v => { try { if (v) sessionStorage.setItem(SIMULA, v); else sessionStorage.removeItem(SIMULA); } catch (e) { } location.reload(); };
@@ -74,6 +74,9 @@ const Accesso = (() => {
       box.addEventListener('focusout', ev => { if (ev.target.closest('[data-gs-info]')) nascondiInfo(); });
       box.addEventListener('scroll', () => nascondiInfo(), true); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
       box.addEventListener('keydown', tasti);
+      // pagina delle carrozzerie: schede e gruppi si trascinano (2026-11-11)
+      box.addEventListener('dragstart', trascinaInizio); box.addEventListener('dragover', trascinaSopra);
+      box.addEventListener('drop', trascinaLascia); box.addEventListener('dragend', trascinaFine);
       // Gestore: dati riletti ogni 10 minuti mentre è aperto (e al ritorno su una scheda rimasta nascosta)
       const gestoreVecchio = () => box && box.querySelector('.gestore .gs-head') && !box.querySelector('.gs-form') && Date.now() - lettoGestore >= ogniGestore();
       setInterval(() => { if (document.visibilityState === 'visible' && gestoreVecchio()) apriGestore({}, true); }, 30 * 1000);
@@ -86,7 +89,7 @@ const Accesso = (() => {
   }
   /** Nome della zona per il lettore di schermo, secondo quello che mostra. */
   // dopo ogni ridisegno della pagina (che ne sostituisce il contenuto) il menu dell'account torna al suo posto
-  const vista = nome => { pagina().setAttribute('aria-label', nome); if (nome !== 'Accesso') queueMicrotask(() => mostraConto()); return box; };
+  const vista = nome => { pagina().setAttribute('aria-label', nome); box.classList.toggle('elenco', nome === 'Scegli la carrozzeria'); if (nome !== 'Accesso') queueMicrotask(() => mostraConto()); return box; };
 
   /* Gestore: riquadro con le ore della cella (blu notte come i suggerimenti «i»); il testo lo prepara il server */
   let info = null, infoDi = null;
@@ -176,9 +179,13 @@ const Accesso = (() => {
 
   /* ---------------------------------------------- elenco delle carrozzerie */
   async function caricaElenco() {
-    const [{ data, error }, adm, nome] = await Promise.all([sb.from('membri').select('ruolo, carrozzerie(id, numero, nome, eliminata_il)').eq('user_id', S.utente.id), sb.rpc('sono_amministratore'), sb.rpc('mio_nome')]);
+    const [{ data, error }, adm, nome, gruppi, ordine] = await Promise.all([sb.from('membri').select('ruolo, carrozzerie(id, numero, nome, eliminata_il)').eq('user_id', S.utente.id), sb.rpc('sono_amministratore'), sb.rpc('mio_nome'),
+      sb.from('gruppi_gestore').select('id, nome, carrozzerie').order('posizione').order('creato_il'), sb.from('ordine_carrozzerie').select('carrozzerie').maybeSingle()]);
     if (error) throw error;
     S.admin = adm.data === true; S.nome = nome.data || '';
+    // disposizione della pagina (2026-11-11): se non si legge, la pagina resta nell'ordine dei numeri e senza gruppi
+    S.gruppi = gruppi.error ? [] : (gruppi.data || []).map(g => ({ id: g.id, nome: g.nome, carrozzerie: g.carrozzerie || [] }));
+    S.ordine = ordine.error || !ordine.data ? [] : ordine.data.carrozzerie || [];
     try { const r = sessionStorage.getItem(SIMULA) || ''; S.simula = S.admin && RUOLI[r] ? r : ''; } catch (e) { S.simula = ''; }
     // consumi del piano (2026-11-10): solo l'amministratore; se la lettura non riesce la pagina resta com'è
     S.consumi = null;
@@ -199,16 +206,139 @@ const Accesso = (() => {
   }
   const GEAR = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>';
 
-  // strumenti del gruppo di sedi (2026-11-05): stessa misura, bordo blu notte, icona disegnata
+  // icone della colonna laterale e dei gruppi (strumenti dal 2026-11-05, colonna dal 2026-11-11)
   const ICONA = {
-    gestore: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
-    persone: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>'
+    gestore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
+    persone: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    cestino: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
+    maniglia: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>'
   };
-  function strumenti() {
-    const b = [];
-    if (vedeGestore()) b.push(`<button type="button" class="lstr" data-gestore="1">${ICONA.gestore}Gestore</button>`);
+  // iniziali della carrozzeria nel quadratino della scheda: «Novi Ligure» → NL, «Carrozzeria 1» → C1
+  const sigla = nome => { const p = String(nome).trim().split(/\s+/).filter(Boolean); return (p.length > 1 ? p[0][0] + p[1][0] : (p[0] || '?').slice(0, 2)).toUpperCase(); };
+  const quante = n => n + (n === 1 ? ' carrozzeria' : ' carrozzerie');
+  /** Colonna blu notte a sinistra (proposta C scelta dal titolare il 2026-11-11): chi è entrato, strumenti, Esci. */
+  function laterale(gone) {
+    const email = S.utente.email || '', chi = chiSono(), b = [];
+    // il Gestore in evidenza (proposta F, 2026-11-11): riquadro bianco sul fondo blu notte, con una riga di spiegazione
+    const gestore = vedeGestore() ? `<button type="button" class="lges" data-gestore="1"><span class="lges-i">${ICONA.gestore}</span><b>Gestore</b>
+      <svg class="lges-f" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      <span class="lges-s">Quanto è pieno ogni reparto, sede per sede</span></button>` : '';
     if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}Persone</button>`);
-    return b.length ? `<span class="lbtn">${b.join('')}</span>` : '';
+    if (gone.length) b.push(`<button type="button" class="lstr" data-eliminate="1" aria-expanded="${!!S.eliminate}">${ICONA.cestino}Carrozzerie eliminate (${gone.length})</button>`);
+    b.push(`<button type="button" class="lstr" data-esci="1">${ESCI}Esci</button>`);
+    return `<aside class="lside" aria-label="Account e strumenti">
+      <div class="lside-tit"><h1>Pianificazione Carrozzeria</h1><p>Ogni carrozzeria ha operai, vetture e impostazioni separati.</p></div>
+      <div class="lside-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
+        <span><b>${esc(S.nome || email)}</b><span>${esc(chi.ruolo)} · ${esc(chi.dove)}</span></span></div>
+      ${gestore}<nav class="lside-nav" aria-label="Strumenti">${b.join('')}</nav>
+      <p class="lside-nota">Per tornare a questa pagina usa il pulsante con il nome della carrozzeria, in alto a destra.</p></aside>`;
+  }
+
+  /* ---------------------------------------------- disposizione (2026-11-11): l'utente ordina le carrozzerie trascinandole e le
+     raccoglie in gruppi, gli stessi del Gestore. Si salva per utente (salva_disposizione); le altre persone non vedono cambi. */
+  /** Gruppi e carrozzerie senza gruppo, nell'ordine scelto. Ogni carrozzeria compare una sola volta. */
+  function disposizione() {
+    const vivi = new Map(vive().map(s => [s.id, s])), usate = new Set();
+    const gruppi = S.gruppi.map(g => ({ id: g.id, nome: g.nome, voci: g.carrozzerie.filter(id => vivi.has(id) && !usate.has(id) && usate.add(id)).map(id => vivi.get(id)) }));
+    const pos = id => { const i = S.ordine.indexOf(id); return i < 0 ? 1e9 : i; };
+    const sciolte = vive().filter(s => !usate.has(s.id)).map((s, i) => [s, i]).sort((a, b) => pos(a[0].id) - pos(b[0].id) || a[1] - b[1]).map(x => x[0]);
+    return { gruppi, sciolte };
+  }
+  // le liste della pagina, dall'alto: un elenco di carrozzerie per gruppo e per ultimo quelle senza gruppo (id '')
+  const liste = () => { const d = disposizione(); return [...d.gruppi.map(g => ({ id: g.id, ids: g.voci.map(s => s.id) })), { id: '', ids: d.sciolte.map(s => s.id) }]; };
+  /** Dopo uno spostamento la pagina cambia subito; il database si aggiorna in un solo passaggio. */
+  function salvaDisposizione(L, fuoco, annuncio) {
+    const vivi = new Set(vive().map(s => s.id));
+    // le carrozzerie eliminate restano nel loro gruppo: se si ripristinano tornano al loro posto
+    S.gruppi = L.filter(l => l.id).map(l => { const g = S.gruppi.find(x => x.id === l.id); return g && Object.assign(g, { carrozzerie: l.ids.concat(g.carrozzerie.filter(id => !vivi.has(id))) }); }).filter(Boolean);
+    S.ordine = L.find(l => !l.id).ids;
+    S.msg = ''; S.ok = ''; S.annuncio = annuncio || '';
+    mostraElenco(fuoco);
+    sb.rpc('salva_disposizione', { gruppi: S.gruppi.map(g => ({ id: g.id, carrozzerie: g.carrozzerie })), sciolte: S.ordine })
+      .then(({ error }) => { if (error) throw error; })
+      .catch(async e => { console.error('[carrozzerie] disposizione', e); await aggiorna(); S.msg = 'Spostamento non salvato: riprova.'; mostraElenco(); });
+  }
+  const nomeDi = id => (voce(id) || {}).nome || '';
+  const nomeLista = id => id ? 'nel gruppo ' + ((S.gruppi.find(g => g.id === id) || {}).nome || '') : 'tra le carrozzerie senza gruppo';
+  /** Mette la carrozzeria nella lista del gruppo, prima o dopo la scheda di riferimento (senza riferimento: in fondo). */
+  function spostaCarrozzeria(id, gruppo, accanto, dopo) {
+    const L = liste(); for (const l of L) l.ids = l.ids.filter(x => x !== id);
+    const l = L.find(x => x.id === gruppo); if (!l) return;
+    const r = accanto ? l.ids.indexOf(accanto) : -1;
+    l.ids.splice(r < 0 ? l.ids.length : r + (dopo ? 1 : 0), 0, id);
+    salvaDisposizione(L, `[data-carr="${id}"] .lopen`, nomeDi(id) + ' spostata ' + nomeLista(gruppo) + '.');
+  }
+  /** Con la tastiera (Alt + frecce sul nome): ±1 un posto avanti o indietro, ±2 nel gruppo dopo o prima. */
+  function spostaConTasti(id, passo) {
+    const L = liste(), li = L.findIndex(l => l.ids.includes(id)); if (li < 0) return;
+    const l = L[li], i = l.ids.indexOf(id); l.ids.splice(i, 1);
+    if (passo === -1 && i > 0) l.ids.splice(i - 1, 0, id);
+    else if (passo === 1 && i < l.ids.length) l.ids.splice(i + 1, 0, id);
+    else if (passo < 0 && li > 0) L[li - 1].ids.push(id);
+    else if (passo > 0 && li < L.length - 1) L[li + 1].ids.unshift(id);
+    else return;
+    const dove = L.find(x => x.ids.includes(id));
+    salvaDisposizione(L, `[data-carr="${id}"] .lopen`, nomeDi(id) + ': posto ' + (dove.ids.indexOf(id) + 1) + ' di ' + dove.ids.length + ' ' + nomeLista(dove.id) + '.');
+  }
+  /** Sposta un gruppo prima o dopo un altro; le carrozzerie senza gruppo restano sempre in fondo. */
+  function spostaGruppo(id, accanto, dopo) {
+    const L = liste(), g = L.find(l => l.id === id); if (!g) return;
+    const altriGruppi = L.filter(l => l !== g), sciolte = altriGruppi.pop();
+    let i = altriGruppi.findIndex(l => l.id === accanto); i = i < 0 ? altriGruppi.length : i + (dopo ? 1 : 0);
+    altriGruppi.splice(i, 0, g);
+    salvaDisposizione([...altriGruppi, sciolte], `[data-gmuovi="${id}"]`, 'Gruppo spostato: posto ' + (i + 1) + ' di ' + altriGruppi.length + '.');
+  }
+
+  // trascinamento con il mouse: presa = { tipo: 'c' (carrozzeria) | 'g' (gruppo), id }
+  let presa = null;
+  const SEGNI = ['drop-prima', 'drop-dopo', 'drop-dentro', 'drop-sopra', 'drop-sotto'];
+  function segno(el, cls) {
+    for (const x of box.querySelectorAll('.' + SEGNI.join(',.'))) if (x !== el) x.classList.remove(...SEGNI);
+    if (el && !el.classList.contains(cls)) { el.classList.remove(...SEGNI); el.classList.add(cls); }
+  }
+  /** Dove cadrebbe ciò che si trascina: { el (da segnare), cls, gruppo, accanto }; el null = sopra se stesso, nessun effetto. */
+  function bersaglio(ev) {
+    const t = ev.target && ev.target.closest ? ev.target : ev.target && ev.target.parentElement; if (!presa || !t) return null;
+    if (presa.tipo === 'c') {
+      const c = t.closest('.lcardi[data-carr]');
+      if (c && c.dataset.carr === presa.id) return { el: null };
+      if (c) { const r = c.getBoundingClientRect(); return { el: c, cls: ev.clientX > r.left + r.width / 2 ? 'drop-dopo' : 'drop-prima', gruppo: c.closest('[data-zona]').dataset.zona, accanto: c.dataset.carr }; }
+      const z = t.closest('.lgruppo[data-gruppo]');
+      return z ? { el: z.querySelector('[data-zona]'), cls: 'drop-dentro', gruppo: z.dataset.gruppo, accanto: '' } : null;
+    }
+    const s = t.closest('.lgruppo[data-gruppo]:not(.sciolte)'); if (!s) return null;
+    if (s.dataset.gruppo === presa.id) return { el: null };
+    const r = s.getBoundingClientRect(); return { el: s, cls: ev.clientY > r.top + r.height / 2 ? 'drop-sotto' : 'drop-sopra', accanto: s.dataset.gruppo };
+  }
+  function trascinaInizio(ev) {
+    const g = ev.target.closest && ev.target.closest('[data-gtrascina]'), c = !g && ev.target.closest && ev.target.closest('.lcardi[data-carr][draggable="true"]');
+    if (!g && !c) return;
+    presa = g ? { tipo: 'g', id: g.dataset.gtrascina } : { tipo: 'c', id: c.dataset.carr };
+    ev.dataTransfer.effectAllowed = 'move'; try { ev.dataTransfer.setData('text/plain', g ? 'gruppo' : nomeDi(presa.id)); } catch (e) { }
+    const el = g ? g.closest('.lgruppo') : c; requestAnimationFrame(() => el.classList.add('presa'));
+  }
+  function trascinaSopra(ev) { const b = bersaglio(ev); if (!b) return presa && segno(null); ev.preventDefault(); ev.dataTransfer.dropEffect = 'move'; segno(b.el, b.cls); }
+  function trascinaLascia(ev) {
+    const b = bersaglio(ev), p = presa; if (!b) return;
+    ev.preventDefault(); trascinaFine();
+    if (!b.el) return;
+    if (p.tipo === 'c') spostaCarrozzeria(p.id, b.gruppo, b.accanto, b.cls === 'drop-dopo');
+    else spostaGruppo(p.id, b.accanto, b.cls === 'drop-sotto');
+  }
+  function trascinaFine() { presa = null; if (!box) return; segno(null); for (const x of box.querySelectorAll('.presa')) x.classList.remove('presa'); }
+
+  /** Nuovo gruppo o nome cambiato: lo stesso salvataggio del Gestore (salva_gruppo_gestore). */
+  async function salvaGruppo(id) {
+    const inp = box.querySelector(`[data-gedit="${id}"]`), nome = (inp ? inp.value : '').trim().replace(/\s+/g, ' ');
+    S.nomeGruppo = inp ? inp.value : '';
+    const err = !nome ? 'Scrivi il nome del gruppo.' : nome.length > 60 ? 'Il nome può avere al massimo 60 caratteri.'
+      : S.gruppi.some(g => g.id !== id && g.nome.toLowerCase() === nome.toLowerCase()) ? 'Hai già un gruppo con questo nome.' : '';
+    if (err) { S.msg = err; S.ok = ''; return mostraElenco(`[data-gedit="${id}"]`); }
+    const g = S.gruppi.find(x => x.id === id);
+    try {
+      const { error } = await sb.rpc('salva_gruppo_gestore', { g: g ? g.id : null, nome, scelte: g ? g.carrozzerie : [] }); if (error) throw error;
+      await aggiorna('', g ? `[data-gmuovi="${g.id}"]` : '');
+    } catch (e) { S.msg = testoErrore(e); S.ok = ''; mostraElenco(`[data-gedit="${id}"]`); }
   }
   /** Consumi del mese rispetto al piano gratuito di Supabase: numeri, percentuali e avviso arrivano già pronti dal database. */
   function consumiHtml() {
@@ -226,35 +356,51 @@ const Accesso = (() => {
     const last = ultima();
     const modifica = (id, nome) => `<div class="lcardi editing"><input type="text" maxlength="60" value="${esc(nome)}" data-edit="${id}" aria-label="Nome della carrozzeria">
       <div class="lact"><button type="button" class="pri" data-save="${id}">Salva</button><button type="button" data-cancel="1">Annulla</button></div></div>`;
+    const spostabili = vive().length > 1;
     const card = s => {
       if (S.modifica === s.id) return modifica(s.id, s.nome);
       const menu = S.menu === s.id ? `<div class="lmenu" role="menu"><button type="button" role="menuitem" data-ren="${s.id}">Rinomina</button>
         <button type="button" role="menuitem" data-utenti="${s.id}">Persone</button><button type="button" role="menuitem" class="del" data-del="${s.id}">Elimina</button></div>` : '';
-      return `<div class="lcardi${s.id === last ? ' last' : ''}"><button type="button" class="lopen" data-sede="${s.id}" title="${esc(s.nome)}"><span class="lnome">${esc(s.nome)}</span><small>${esc(S.admin ? 'Amministratore' : RUOLI[s.ruolo])}${s.id === last ? ' · Ultima usata' : ''}</small></button>
+      return `<div class="lcardi${s.id === last ? ' last' : ''}" data-carr="${s.id}" draggable="${spostabili}"><button type="button" class="lopen" data-sede="${s.id}" title="${esc(s.nome)}"${spostabili ? ' aria-describedby="lcome"' : ''}>
+        <span class="lsigla" aria-hidden="true">${esc(sigla(s.nome))}</span><span class="ltesto"><span class="lnome">${esc(s.nome)}</span><small>${esc(S.admin ? 'Amministratore' : RUOLI[s.ruolo])}${s.id === last ? ' · Ultima usata' : ''}</small></span></button>
         ${titolareDi(s) ? `<button type="button" class="lgear" data-menu="${s.id}" aria-haspopup="menu" aria-expanded="${S.menu === s.id}" aria-label="Impostazioni di ${esc(s.nome)}" title="Impostazioni">${GEAR}</button>${menu}` : ''}</div>`;
     };
-    const puoAggiungere = piuSedi();
-    const nuova = S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (puoAggiungere ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
-    const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s));
-    return `<div class="lcard"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>Scegli la carrozzeria: ognuna ha operai, vetture e impostazioni separati.</p></div>
-      <div class="lbar"><h2 class="ltit">Le tue carrozzerie</h2>${strumenti()}</div>
-      ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}${consumiHtml()}
-      ${vive().length || nuova ? `<div class="lgrid">${vive().map(card).join('')}${nuova}</div>`
+    const nomeGruppo = (id, nome) => `<header class="lgh editing"><input type="text" maxlength="60" value="${esc(S.nomeGruppo ?? nome)}" data-gedit="${id}" aria-label="Nome del gruppo" placeholder="Per esempio: Zona nord">
+      <button type="button" class="pri" data-gsalva="${id}">Salva</button><button type="button" data-gannulla="1">Annulla</button></header>`;
+    const gruppo = (g, voci) => `<section class="lgruppo" data-gruppo="${g.id}" aria-label="Gruppo ${esc(g.nome)}">
+      ${S.modGruppo === g.id ? nomeGruppo(g.id, g.nome) : `<header class="lgh" draggable="true" data-gtrascina="${g.id}"><button type="button" class="lmaniglia" data-gmuovi="${g.id}" aria-label="Sposta il gruppo ${esc(g.nome)}" aria-describedby="lcome" title="Trascina per spostare il gruppo">${ICONA.maniglia}</button>
+        <h3>${esc(g.nome)}</h3><span class="lconta">${quante(voci.length)}</span>
+        <span class="lgaz"><button type="button" data-grin="${g.id}">Rinomina</button><button type="button" class="del" data-gdel="${g.id}">Elimina il gruppo</button></span></header>`}
+      <div class="lgrid" data-zona="${g.id}">${voci.map(card).join('') || '<p class="lvuoto">Trascina qui le carrozzerie del gruppo.</p>'}</div></section>`;
+    const nuova = S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (piuSedi() ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
+    const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s)), d = disposizione();
+    const sciolte = `<section class="lgruppo sciolte" data-gruppo="" aria-label="${d.gruppi.length ? 'Carrozzerie senza gruppo' : 'Carrozzerie'}">
+      ${d.gruppi.length ? `<header class="lgh"><h3>Senza gruppo</h3><span class="lconta">${quante(d.sciolte.length)}</span></header>` : ''}
+      <div class="lgrid" data-zona="">${d.sciolte.map(card).join('')}${d.gruppi.length && !d.sciolte.length ? '<p class="lvuoto">Trascina qui una carrozzeria per toglierla dal suo gruppo.</p>' : ''}${nuova}</div></section>`;
+    const nuovoGruppo = S.modGruppo === 'nuovo' ? `<section class="lgruppo" data-gruppo="nuovo" aria-label="Nuovo gruppo">${nomeGruppo('nuovo', '')}<p class="lvuoto">Dopo il salvataggio trascina qui le carrozzerie del gruppo.</p></section>` : '';
+    return `<div class="lpag">${laterale(gone)}<main class="lmain">
+      <div class="lbar"><h2 class="ltit">Le tue carrozzerie <span class="lconta">${quante(vive().length)}</span></h2>
+        ${spostabili ? '<button type="button" class="lnuovo" data-gnuovo="1">+ Nuovo gruppo</button>' : ''}</div>
+      ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}<p class="lnasc" role="status">${esc(S.annuncio || '')}</p>${consumiHtml()}
+      ${gone.length && S.eliminate ? `<section class="lgone" aria-labelledby="lgoneTit"><h3 id="lgoneTit" tabindex="-1">Carrozzerie eliminate (${gone.length})</h3><p class="lnote">Restano recuperabili finché non le elimini definitivamente.</p>
+        ${gone.map(s => `<div class="lgrow"><span>${esc(s.nome)}</span><button type="button" data-restore="${s.id}">Ripristina</button><button type="button" class="del" data-wipe="${s.id}">Elimina definitivamente</button></div>`).join('')}</section>` : ''}
+      ${vive().length || nuova ? d.gruppi.map(g => gruppo(g, g.voci)).join('') + nuovoGruppo + sciolte
         : '<p class="lnote">Non hai ancora accesso a nessuna carrozzeria: chiedi al titolare di aggiungerti.</p>'}
-      ${gone.length ? `<details class="lgone"><summary>Carrozzerie eliminate (${gone.length})</summary><p class="lnote">Restano recuperabili finché non le elimini definitivamente.</p>
-        ${gone.map(s => `<div class="lgrow"><span>${esc(s.nome)}</span><button type="button" data-restore="${s.id}">Ripristina</button><button type="button" class="del" data-wipe="${s.id}">Elimina definitivamente</button></div>`).join('')}</details>` : ''}
-      <p class="lnote">Per tornare a questa pagina usa il pulsante con il nome della carrozzeria, in alto a destra.</p></div>`;
+      ${spostabili ? '<p class="lnote" id="lcome">Trascina le schede per cambiarne l’ordine o per metterle in un gruppo; con la tastiera usa Alt e le frecce sul nome. I gruppi sono gli stessi del Gestore e li vedi solo tu.</p>' : ''}
+      </main></div>`;
   }
   function mostraElenco(focusSel) {
     nascondiInfo();
+    const y = box ? box.scrollTop : 0;
     vista('Scegli la carrozzeria').innerHTML = landingHtml();
-    const f = (focusSel && box.querySelector(focusSel)) || box.querySelector('[data-edit]') || box.querySelector('.last .lopen') || box.querySelector('.lopen');
-    if (f) { f.focus(); if (f.matches('input')) f.select(); }
+    box.scrollTop = y;
+    const f = (focusSel && box.querySelector(focusSel)) || box.querySelector('[data-edit], [data-gedit]') || box.querySelector('.last .lopen') || box.querySelector('.lopen');
+    if (f) { f.focus({ preventScroll: true }); if (focusSel) f.scrollIntoView({ block: 'nearest' }); if (f.matches('input')) f.select(); }
   }
-  async function aggiorna(ok = '') {
-    S.menu = null; S.modifica = null; S.ok = ok;
+  async function aggiorna(ok = '', fuoco = '') {
+    S.menu = null; S.modifica = null; S.modGruppo = null; S.nomeGruppo = undefined; S.annuncio = ''; S.ok = ok;
     try { await caricaElenco(); S.msg = ''; } catch (e) { S.msg = testoErrore(e); }
-    mostraElenco();
+    mostraElenco(fuoco);
   }
   async function salvaNome(id) {
     const inp = box.querySelector(`[data-edit="${id}"]`);
@@ -279,7 +425,14 @@ const Accesso = (() => {
     if (t.dataset.gs) { if (t.dataset.gsConferma && !confirm(t.dataset.gsConferma)) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
     if (t.dataset.gsChiudi) return mostraElenco('[data-gestore]');
     if (t.dataset.gsApri) { const g = t.closest('[data-gs-gruppo]'), parte = t.dataset.gsApri; if (g && aperti[parte]) { aperti[parte][g.dataset.gsGruppo] = !g.classList.contains('apri-' + parte); salvaAperti(); mostraAperti(); } return; }
-    S.msg = ''; S.ok = '';
+    S.msg = ''; S.ok = ''; S.annuncio = '';
+    if (t.dataset.esci) { try { sessionStorage.removeItem(SIMULA); } catch (e) { } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } await sb.auth.signOut(); return location.reload(); }
+    if (t.dataset.eliminate) { S.eliminate = !S.eliminate; return mostraElenco(S.eliminate ? '#lgoneTit' : '[data-eliminate]'); }
+    if (t.dataset.gnuovo) { S.modGruppo = 'nuovo'; S.nomeGruppo = undefined; return mostraElenco('[data-gedit]'); }
+    if (t.dataset.grin) { S.modGruppo = t.dataset.grin; S.nomeGruppo = undefined; return mostraElenco('[data-gedit]'); }
+    if (t.dataset.gannulla) { const id = S.modGruppo; S.modGruppo = null; S.nomeGruppo = undefined; return mostraElenco(id && id !== 'nuovo' ? `[data-gmuovi="${id}"]` : '[data-gnuovo]'); }
+    if (t.dataset.gsalva) return salvaGruppo(t.dataset.gsalva);
+    if (t.dataset.gmuovi) return; // la maniglia si trascina, o si sposta con Alt e le frecce
     if (t.dataset.menu) { const id = t.dataset.menu; S.menu = S.menu === id ? null : id; return mostraElenco(S.menu ? `.lmenu [data-ren="${id}"]` : `[data-menu="${id}"]`); }
     S.menu = null;
     if (t.dataset.sede) return apri(t.dataset.sede);
@@ -290,6 +443,12 @@ const Accesso = (() => {
     if (t.dataset.utenti) return apriPersone(t.dataset.utenti); // dall'ingranaggio: la finestra Persone filtrata su quella sede
     if (t.dataset.persone) return apriPersone();
     try {
+      if (t.dataset.gdel) {
+        const g = S.gruppi.find(x => x.id === t.dataset.gdel);
+        if (!g || !confirm('Eliminare il gruppo «' + g.nome + '»? Le carrozzerie restano: passano tra quelle senza gruppo. Il gruppo sparisce anche dal Gestore.')) return mostraElenco(`[data-gdel="${t.dataset.gdel}"]`);
+        const { error } = await sb.from('gruppi_gestore').delete().eq('id', g.id); if (error) throw error;
+        return aggiorna('', '[data-gnuovo]');
+      }
       if (t.dataset.del) {
         const s = voce(t.dataset.del);
         if (!confirm('Eliminare ' + s.nome + '? Sparisce dall’elenco, ma i suoi dati restano recuperabili da «Carrozzerie eliminate».')) return mostraElenco();
@@ -314,6 +473,17 @@ const Accesso = (() => {
     if (ev.target.matches && ev.target.matches('[data-edit]')) {
       if (ev.key === 'Enter') { ev.preventDefault(); salvaNome(ev.target.dataset.edit); }
       if (ev.key === 'Escape') { ev.preventDefault(); S.modifica = null; mostraElenco(); }
+    } else if (ev.target.matches && ev.target.matches('[data-gedit]')) {
+      if (ev.key === 'Enter') { ev.preventDefault(); salvaGruppo(ev.target.dataset.gedit); }
+      if (ev.key === 'Escape') { ev.preventDefault(); box.querySelector('[data-gannulla]').click(); }
+    } else if (ev.altKey && /^Arrow(Left|Right|Up|Down)$/.test(ev.key) && ev.target.matches && ev.target.matches('.lopen[aria-describedby], [data-gmuovi]')) {
+      // spostamenti con la tastiera: sul nome della carrozzeria ←→ un posto, ↑↓ nel gruppo prima o dopo; sulla maniglia ↑↓ il gruppo
+      ev.preventDefault();
+      const avanti = ev.key === 'ArrowRight' || ev.key === 'ArrowDown', g = ev.target.dataset.gmuovi;
+      if (g) {
+        const gruppiPag = liste().filter(l => l.id), i = gruppiPag.findIndex(l => l.id === g), j = i + (avanti ? 1 : -1);
+        if (i >= 0 && j >= 0 && j < gruppiPag.length) spostaGruppo(g, gruppiPag[j].id, avanti);
+      } else spostaConTasti(ev.target.dataset.sede, (avanti ? 1 : -1) * (/Up|Down/.test(ev.key) ? 2 : 1));
     } else if (ev.key === 'Escape' && S.menu) { const id = S.menu; S.menu = null; mostraElenco(`[data-menu="${id}"]`); }
     ev.stopPropagation(); // le scorciatoie del planning restano spente
   }

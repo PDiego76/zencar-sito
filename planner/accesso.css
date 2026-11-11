@@ -430,3 +430,85 @@ body.con-planner .conto-btn.simula .conto-torna, body.con-planner .conto-btn.sim
 /* tabellone dell'officina (2026-11-11): la parte disegnata dal server copre tutto lo schermo */
 body.vista-tabellone { overflow: hidden; background: #0d1a2a; }
 body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none; }
+
+/* Pagina delle carrozzerie (2026-11-11, proposta C scelta dal titolare): colonna blu notte a sinistra con chi è entrato e gli
+   strumenti; a destra le carrozzerie, in gruppi (gli stessi del Gestore), da spostare trascinandole. Il menu dell'account
+   in alto a destra qui non serve: nome, ruolo ed Esci stanno nella colonna. */
+#landing.elenco { display: block; padding: 0; }
+#landing.elenco #conto { display: none; }
+#landing .lpag { display: flex; flex-wrap: wrap; min-height: 100%; }
+#landing .lside { flex: 0 0 300px; box-sizing: border-box; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; gap: 26px; padding: 32px 24px; background: var(--navy); color: #fff; }
+#landing .lside-tit h1 { margin: 0; font: 700 22px/1.2 var(--f, system-ui); color: #fff; }
+#landing .lside-tit p { margin: 8px 0 0; font-size: 14px; line-height: 1.5; color: #d9dde1; }
+#landing .lside-chi { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 12px; background: #ffffff14; }
+#landing .lside-chi .conto-ini { background: #fff; color: var(--navy); }
+#landing .lside-chi > span:last-child { display: grid; gap: 2px; min-width: 0; }
+#landing .lside-chi b { font: 700 15px var(--f, system-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#landing .lside-chi b + span { font-size: 13px; color: #d9dde1; }
+#landing .lside-nav { display: grid; gap: 4px; }
+/* il Gestore in evidenza (proposta F, 2026-11-11): riquadro bianco con icona, titolo, spiegazione e freccia arancione */
+#landing .lges { display: grid; grid-template-columns: 40px 1fr 18px; align-items: center; gap: 2px 12px; width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; box-shadow: 0 6px 18px #00000030; }
+#landing .lges:hover { background: var(--tape-soft); }
+#landing .lges:focus-visible { outline: 3px solid var(--tape-chiaro); outline-offset: 3px; }
+#landing .lges-i { grid-row: span 2; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: var(--navy); color: #fff; }
+#landing .lges b { font: 700 17px var(--f, system-ui); }
+#landing .lges-f { grid-row: span 2; color: var(--tape); }
+#landing .lges-s { font-size: 13px; line-height: 1.35; color: var(--muted); }
+#landing .lside .lstr { justify-content: flex-start; gap: 12px; width: 100%; min-width: 0; height: 44px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: #fff; font: 500 15px var(--f, system-ui); text-align: left; }
+#landing .lside .lstr:hover { background: #ffffff17; }
+#landing .lside .lstr[aria-expanded="true"] { background: #ffffff24; }
+#landing .lside-nota { margin: auto 0 0; font-size: 13px; line-height: 1.5; color: #d9dde1; }
+#landing .lmain { flex: 999 1 560px; min-width: 0; max-width: 1240px; box-sizing: border-box; padding: 36px 40px 56px; display: grid; gap: 18px; align-content: start; container-type: inline-size; }
+#landing .lmain .lbar .ltit { font-size: 22px; }
+#landing .lconta { font-size: 13px; font-weight: 400; color: var(--muted); }
+#landing .lnuovo { height: 38px; padding: 0 16px; border: 1px solid var(--navy); border-radius: 7px; background: var(--surface); color: var(--navy); font: 600 13px var(--f, system-ui); cursor: pointer; }
+#landing .lnuovo:hover { background: color-mix(in srgb, var(--navy) 7%, var(--surface)); }
+#landing .lnuovo:focus-visible, #landing .lmaniglia:focus-visible, #landing .lgh button:focus-visible { outline: 3px solid var(--tape-chiaro); outline-offset: 2px; }
+#landing .lnasc { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
+/* un gruppo è una zona grigio-azzurra (niente bordo: le schede bianche ci stanno dentro) */
+#landing .lgruppo { display: grid; gap: 12px; padding: 12px 14px 14px; border-radius: 14px; background: var(--grid); transition: box-shadow .12s; }
+#landing .lgruppo.sciolte:not(:has(.lgh)) { padding: 0; background: none; }
+#landing .lgh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 36px; }
+#landing .lgh[draggable="true"] { cursor: grab; }
+#landing .lgh h3 { margin: 0; padding: 7px 14px; border-radius: 7px; background: var(--navy); color: #fff; font: 700 15px/1.2 var(--f, system-ui); }
+/* «Senza gruppo» non è un gruppo creato: etichetta solo bordata */
+#landing .sciolte .lgh h3 { padding: 6px 13px; border: 1px solid var(--navy); background: none; color: var(--navy); }
+#landing .lgaz { margin-left: auto; display: flex; gap: 6px; }
+#landing .lgh button:not(.lmaniglia) { height: 32px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 500 13px var(--f, system-ui); cursor: pointer; }
+#landing .lgh button:not(.lmaniglia):hover { border-color: var(--grid-strong); }
+#landing .lgh button.del { color: var(--bad); }
+#landing .lgh button.pri { background: var(--navy); border-color: var(--navy); color: #fff; }
+#landing .lmaniglia { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: grab; }
+#landing .lmaniglia:hover { background: var(--surface); color: var(--ink); }
+#landing .lgh.editing input { flex: 1 1 220px; max-width: 360px; height: 36px; box-sizing: border-box; border: 1px solid var(--tape-chiaro); border-radius: 6px; padding: 0 10px; background: var(--surface); color: var(--ink); font: 600 15px var(--f, system-ui); }
+#landing .lgh.editing input:focus { outline: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--tape-chiaro) 22%, transparent); }
+/* quattro schede per riga (2026-11-11), meno quando lo spazio non basta */
+#landing .lmain .lgrid { grid-template-columns: repeat(4, minmax(0, 1fr)); border-radius: 10px; }
+@container (max-width: 900px) { #landing .lmain .lgrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@container (max-width: 680px) { #landing .lmain .lgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (max-width: 440px) { #landing .lmain .lgrid { grid-template-columns: minmax(0, 1fr); } }
+#landing .lvuoto { grid-column: 1 / -1; margin: 0; min-height: 64px; display: flex; align-items: center; justify-content: center; padding: 0 12px; border: 1.5px dashed var(--grid-strong); border-radius: 10px; color: var(--muted); font-size: 13px; text-align: center; }
+/* scheda: iniziali in un quadratino, nome e ruolo accanto */
+#landing .lpag .lopen { flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; min-height: 76px; padding: 14px 44px 14px 12px !important; overflow-wrap: break-word; }
+#landing .lsigla { width: 40px; height: 40px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 9px; background: var(--grid); color: var(--navy); font: 700 15px var(--f, system-ui); }
+#landing .last .lsigla { background: var(--navy); color: #fff; }
+#landing .ltesto { display: grid; gap: 2px; min-width: 0; }
+#landing .lpag .lgear { top: 20px; }
+#landing .lpag .ladd { min-height: 76px; }
+/* trascinamento: la scheda presa si attenua; una riga arancione dice dove cade */
+#landing .presa { opacity: .45; }
+#landing .lcardi.drop-prima::before, #landing .lcardi.drop-dopo::after { content: ""; position: absolute; top: 6px; bottom: 6px; width: 4px; border-radius: 2px; background: var(--tape-chiaro); }
+#landing .lcardi.drop-prima::before { left: -9px; }
+#landing .lcardi.drop-dopo::after { right: -9px; }
+#landing .lgrid.drop-dentro { outline: 2px dashed var(--tape-chiaro); outline-offset: 4px; background: var(--tape-soft); }
+#landing .lgruppo.drop-sopra { box-shadow: 0 -4px 0 0 var(--tape-chiaro); }
+#landing .lgruppo.drop-sotto { box-shadow: 0 4px 0 0 var(--tape-chiaro); }
+#landing .lgone h3 { margin: 0 0 4px; font: 700 15px var(--f, system-ui); }
+#landing .lgone h3:focus { outline: none; }
+@media (max-width: 900px) {
+  #landing .lside { flex-basis: 100%; position: static; height: auto; gap: 16px; padding: 20px 16px; }
+  #landing .lside-nav { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+  #landing .lside-nota { display: none; }
+  #landing .lmain { padding: 20px 16px 40px; }
+}
+@media (prefers-reduced-motion: reduce) { #landing .lgruppo { transition: none; } }
