@@ -435,13 +435,16 @@ const Accesso = (() => {
   }
 
   /** Apre il planning della carrozzeria scelta. */
-  function apri(id, sola = '') {
+  function apri(id, sola = '', vista = '') {
     const s = voce(id); if (!s || s.eliminata_il) return aggiorna();
-    s.sola = sola; s.simula = S.simula;
-    try { history.replaceState(null, '', location.pathname + location.search + '#c=' + id); } catch (e) { }
+    s.sola = sola; s.simula = S.simula; s.vista = vista;
+    // il tabellone resta nell'indirizzo: lo schermo dell'officina, riacceso, torna da solo al tabellone
+    try { history.replaceState(null, '', location.pathname + location.search + '#c=' + id + (vista ? '&' + vista + '=1' : '')); } catch (e) { }
     if (box) { box.remove(); box = null; }
     if (ascolto) { sb.removeChannel(ascolto); ascolto = null; } // il gestore non ascolta più le versioni
-    sedeAperta = s; mostraConto();
+    sedeAperta = s;
+    // tabellone dell'officina (2026-11-11): tutto lo schermo, senza menu dell'account
+    if (vista) { document.body.classList.add('vista-' + vista); togliConto(); } else mostraConto();
     bootSede(s);
   }
 
@@ -698,6 +701,7 @@ const Accesso = (() => {
      ruolo si è entrati e contiene «Esci». È della pagina di accesso, non del planning: il server non lo vede. */
   let conto = null, menuConto = null, sedeAperta = null;
   const FRECCIA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+  const SCHERMO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
   const ESCI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>';
   // ruolo e dove (2026-11-05): l'email, spesso lunga, si legge passando con il mouse (title) e la sente il lettore di schermo
   function chiSono() {
@@ -733,12 +737,14 @@ const Accesso = (() => {
     const vediCome = S.admin && sedeAperta ? `<div class="mc-sez" role="group" aria-label="Vedi il planner come"><span class="mc-tit">Vedi il planner come</span>${Object.entries(RUOLI).map(([k, t]) => `<button type="button" role="menuitem" class="mc-voce mc-ruolo" data-simula="${k}">${esc(t)}</button>`).join('')}<span class="mc-nota">Solo per vedere: le modifiche non si salvano. Clic sull’icona per tornare amministratore.</span></div>` : '';
     menuConto.innerHTML = `<div class="mc-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
       <div><span class="mc-nasc">Account ${esc(email)}: </span>${S.nome ? `<b class="mc-nome">${esc(S.nome)}</b>` : ''}<b>${esc(chi.ruolo)}</b><span>${esc(chi.dove)}</span></div></div>
-      ${vediCome}<button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
+      ${vediCome}${sedeAperta && !S.simula ? `<button type="button" role="menuitem" class="mc-voce" data-tabellone="1">${SCHERMO}Apri il tabellone dell’officina</button>` : ''}<button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
     conto.appendChild(menuConto);
     conto.querySelector('[data-conto]').setAttribute('aria-expanded', 'true');
     menuConto.addEventListener('click', async ev => {
       ev.stopPropagation();
       const r = ev.target.closest('[data-simula]'); if (r) return simula(r.dataset.simula);
+      // il tabellone si apre in una scheda nuova, da portare a tutto schermo (F11) sullo schermo dell'officina
+      if (ev.target.closest('[data-tabellone]')) { chiudiMenuConto(false); window.open(location.pathname + location.search + '#c=' + sedeAperta.id + '&tabellone=1', '_blank', 'noopener'); return; }
       if (ev.target.closest('[data-conto-esci]')) { try { sessionStorage.removeItem(SIMULA); } catch (e) { } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } await sb.auth.signOut(); location.reload(); }
     });
     menuConto.addEventListener('keydown', ev => {
@@ -769,6 +775,9 @@ const Accesso = (() => {
     // una sola carrozzeria e nessun ruolo di supervisione: si entra direttamente nel calendario (2026-11-04).
     // Il titolare ritorna alla pagina delle carrozzerie (utenti, nome) con il pulsante del nome: «planning-elenco».
     let elenco = false; try { elenco = sessionStorage.getItem('planning-elenco') === '1'; sessionStorage.removeItem('planning-elenco'); } catch (e) { }
+    // tabellone dell'officina: #c=…&tabellone=1 nell'indirizzo (aperto dal menu dell'account, o salvato sullo schermo)
+    const arrivo = new URLSearchParams(location.hash.slice(1)), ct = arrivo.get('c');
+    if (arrivo.get('tabellone') && ct && voce(ct) && !voce(ct).eliminata_il) return apri(ct, '', 'tabellone');
     const unica = vive().length === 1 && !vedeGestore() ? vive()[0] : null;
     if (unica && !elenco) return apri(unica.id, titolareDi(unica) ? 'elenco' : 'esci');
     // come nel planning originale, #c=… nell'indirizzo riapre direttamente quella carrozzeria

@@ -427,3 +427,6 @@ body.con-planner .conto-btn.simula .conto-torna, body.con-planner .conto-btn.sim
 #landing .lc-sedi th { color: var(--muted); font-weight: 500; }
 #landing .lc-sedi td + td, #landing .lc-sedi th + th { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 560px) { #landing .lcons li { grid-template-columns: 1fr auto; } #landing .lc-barra { grid-column: 1 / -1; grid-row: 2; } }
+/* tabellone dell'officina (2026-11-11): la parte disegnata dal server copre tutto lo schermo */
+body.vista-tabellone { overflow: hidden; background: #0d1a2a; }
+body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none; }

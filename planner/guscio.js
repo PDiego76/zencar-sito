@@ -96,7 +96,7 @@ async function richiesta(eventi) {
     let vista = null; try { vista = JSON.parse(sessionStorage.getItem('vista') || 'null'); } catch (e) { }
     const prefs = {}; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (/^planning-vista/.test(k)) prefs[k] = localStorage.getItem(k); } } catch (e) { }
     const corpo = { carrozzeria_id: C.voce.id, uiBase: C.uiBase || (C.primo && vista) || null, catena: C.catena, eventi, imp: C.imp, annulla: C.annulla,
-      impronte: C.impronte, primo: C.primo, sola: C.voce.sola || null, simula: C.voce.simula || null, prefs, larghezza: innerWidth, altezza: innerHeight, ora: window.__ORA_FINTA || null };
+      impronte: C.impronte, primo: C.primo, sola: C.voce.sola || null, simula: C.voce.simula || null, vista: C.voce.vista || null, prefs, larghezza: innerWidth, altezza: innerHeight, ora: window.__ORA_FINTA || null };
     const r = await fetch(window.CONFIG.url + '/functions/v1/planner', { method: 'POST', body: JSON.stringify(corpo),
       headers: { 'Content-Type': 'application/json', apikey: window.CONFIG.chiave, Authorization: 'Bearer ' + session.access_token } });
     const d = await r.json().catch(() => ({ errore: 'Risposta non leggibile dal server.' }));
@@ -106,6 +106,7 @@ async function richiesta(eventi) {
     try { sessionStorage.setItem('vista', JSON.stringify({ tab: d.ui.tab, view: d.ui.view, weekStart: d.ui.weekStart, month: d.ui.month, parkWeek: d.ui.parkWeek, giorno: d.ui.giorno })); } catch (e) { }
     togliErrore(); ultimaRisposta = Date.now();
     if (d.tasti) C.tasti = d.tasti;
+    if (d.ogni) OGNI = d.ogni; // il server può chiedere aggiornamenti più frequenti (schermo a parete)
     // un errore qui è della pagina, non della connessione: si chiede di nuovo tutta la pagina (una volta)
     try { applica(d); C.rifatta = false; }
     catch (e) {
@@ -237,7 +238,7 @@ function riprendi() {
 addEventListener('online', () => { if (daRiprendere) { clearTimeout(daRiprendere); daRiprendere = null; riprendi(); } });
 // aggiornamento periodico: ogni 15 minuti (o tornando sulla scheda dopo 15 minuti) la pagina si ridisegna con i dati
 // del server, ma solo se nessuna finestra è aperta, non si sta scrivendo in un campo e la scheda è visibile
-const OGNI = 15 * 60 * 1000;
+let OGNI = 15 * 60 * 1000;
 let ultimaRisposta = Date.now();
 function aggiornaSeFermo() {
   if (!C.voce || document.visibilityState !== 'visible' || Date.now() - ultimaRisposta < OGNI) return;
@@ -246,6 +247,9 @@ function aggiornaSeFermo() {
   ultimaRisposta = Date.now(); invia({ t: 'aggiorna' });
 }
 setInterval(aggiornaSeFermo, 60 * 1000);
+// orologio: gli elementi con data-orologio mostrano l'ora italiana, aggiornata qui tra una risposta e l'altra
+const fmtOra = new Intl.DateTimeFormat('it-IT', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome' });
+setInterval(() => { const t = fmtOra.format(new Date()); document.querySelectorAll('[data-orologio]').forEach(el => { if (el.textContent !== t) el.textContent = t; }); }, 10 * 1000);
 document.addEventListener('visibilitychange', aggiornaSeFermo);
 // il messaggio d'errore sostituisce lo stato del salvataggio; alla prima risposta buona torna il testo di prima
 let erroreMostrato = null;
