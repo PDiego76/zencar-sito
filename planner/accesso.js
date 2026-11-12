@@ -34,7 +34,7 @@ const Accesso = (() => {
     gestore: 'supervisiona dal Gestore e scrive i messaggi; nella carrozzeria vede tutto, importi compresi, senza modificare'
   };
   const PW_MIN = 10;
-  const S = { utente: null, voci: [], menu: null, modifica: null, msg: '', ok: '', admin: false, nome: '', simula: '', gruppi: [], ordine: [], modGruppo: null, nomeGruppo: undefined, eliminate: false, annuncio: '' };
+  const S = { utente: null, voci: [], menu: null, modifica: null, msg: '', ok: '', admin: false, nome: '', simula: '', gruppi: [], ordine: [], modGruppo: null, nomeGruppo: undefined, eliminate: false, cerca: '', menuSposta: false, bozza: null };
   // simulazione (2026-11-06): l'amministratore vede il planner come un altro ruolo, senza salvare; vale per la scheda del browser
   const SIMULA = 'zencar-simula';
   const simula = v => { try { if (v) sessionStorage.setItem(SIMULA, v); else sessionStorage.removeItem(SIMULA); } catch (e) { } location.reload(); };
@@ -74,6 +74,10 @@ const Accesso = (() => {
       box.addEventListener('focusout', ev => { if (ev.target.closest('[data-gs-info]')) nascondiInfo(); });
       box.addEventListener('scroll', () => nascondiInfo(), true); box.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.dataset.modoForm) inviaAccesso(ev.target); else if (ev.target.dataset.gs) inviaGestore(ev.target); });
       box.addEventListener('keydown', tasti);
+      box.addEventListener('input', ev => {
+        const n = ev.target.matches && ev.target.matches('[data-num]') && ev.target;
+        if (n) { if (/\D/.test(n.value)) n.value = n.value.replace(/\D/g, ''); const a = box.querySelector(`[data-anteprima="${n.dataset.num}"]`); if (a) a.textContent = n.value || a.dataset.iniziali; return; }
+        if (ev.target.matches && ev.target.matches('[data-cerca]')) { S.cerca = ev.target.value; S.menu = null; mostraElenco('[data-cerca]'); } });
       // pagina delle carrozzerie: schede e gruppi si trascinano (2026-11-11)
       box.addEventListener('dragstart', trascinaInizio); box.addEventListener('dragover', trascinaSopra);
       box.addEventListener('drop', trascinaLascia); box.addEventListener('dragend', trascinaFine);
@@ -89,7 +93,7 @@ const Accesso = (() => {
   }
   /** Nome della zona per il lettore di schermo, secondo quello che mostra. */
   // dopo ogni ridisegno della pagina (che ne sostituisce il contenuto) il menu dell'account torna al suo posto
-  const vista = nome => { pagina().setAttribute('aria-label', nome); box.classList.toggle('elenco', nome === 'Scegli la carrozzeria'); if (nome !== 'Accesso') queueMicrotask(() => mostraConto()); return box; };
+  const vista = nome => { pagina().setAttribute('aria-label', nome); if (nome !== 'Scegli la carrozzeria') chiudiAvviso(); box.classList.toggle('elenco', nome === 'Scegli la carrozzeria'); if (nome !== 'Accesso') queueMicrotask(() => mostraConto()); return box; };
 
   /* Gestore: riquadro con le ore della cella (blu notte come i suggerimenti «i»); il testo lo prepara il server */
   let info = null, infoDi = null;
@@ -179,7 +183,7 @@ const Accesso = (() => {
 
   /* ---------------------------------------------- elenco delle carrozzerie */
   async function caricaElenco() {
-    const [{ data, error }, adm, nome, gruppi, ordine] = await Promise.all([sb.from('membri').select('ruolo, carrozzerie(id, numero, nome, eliminata_il)').eq('user_id', S.utente.id), sb.rpc('sono_amministratore'), sb.rpc('mio_nome'),
+    const [{ data, error }, adm, nome, gruppi, ordine] = await Promise.all([sb.from('membri').select('ruolo, carrozzerie(id, numero, nome, sigla, eliminata_il)').eq('user_id', S.utente.id), sb.rpc('sono_amministratore'), sb.rpc('mio_nome'),
       sb.from('gruppi_gestore').select('id, nome, carrozzerie').order('posizione').order('creato_il'), sb.from('ordine_carrozzerie').select('carrozzerie').maybeSingle()]);
     if (error) throw error;
     S.admin = adm.data === true; S.nome = nome.data || '';
@@ -213,25 +217,42 @@ const Accesso = (() => {
     cestino: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
     maniglia: '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></svg>'
   };
-  // iniziali della carrozzeria nel quadratino della scheda: «Novi Ligure» → NL, «Carrozzeria 1» → C1
-  const sigla = nome => { const p = String(nome).trim().split(/\s+/).filter(Boolean); return (p.length > 1 ? p[0][0] + p[1][0] : (p[0] || '?').slice(0, 2)).toUpperCase(); };
+  /** Iniziali nel quadratino della scheda (2026-11-12): dalla parte del nome che distingue, diverse per ogni scheda.
+      «Carrozzeria 4» → 4; «Milano Nord» e «Milano Sud» (la città è in comune) → NO e SU; «Modena» e «Monza» → MO e MN. */
+  const GENERICI = /^(auto)?carrozzeri[ae]$|^sede$|^officina$/i;
+  function sigle(voci) {
+    const parole = voci.map(s => String(s.nome).trim().split(/\s+/).filter(Boolean)), primi = new Map(), usate = new Set(), out = new Map();
+    for (const p of parole) if (p.length > 1) primi.set(p[0].toLowerCase(), (primi.get(p[0].toLowerCase()) || 0) + 1);
+    voci.forEach((s, i) => {
+      let p = parole[i];
+      if (p.length > 1 && GENERICI.test(p[0])) p = p.slice(1);
+      if (p.length > 1 && primi.get(p[0].toLowerCase()) > 1) p = p.slice(1);
+      const w = p.map(x => x.replace(/[^\p{L}\p{N}]/gu, '')).filter(Boolean), a = w[0] || '?', b = w[1] || '';
+      let prove = /^\d+$/.test(a) && !b ? [a.slice(0, 3)] : (b ? [a[0] + b[0], ...[...b.slice(1)].map(c => a[0] + c)] : []).concat([...a.slice(1)].map(c => a[0] + c));
+      prove = (prove.length ? prove : [a]).map(x => x.toUpperCase());
+      const k = prove.find(x => !usate.has(x)) || prove[0]; usate.add(k); out.set(s.id, k);
+    });
+    return out;
+  }
+  // ricerca (2026-11-12): maiuscole e accenti non contano
+  const senzaAccenti = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const quante = n => n + (n === 1 ? ' carrozzeria' : ' carrozzerie');
+  // logo ZenCar (assets/zencar-logo.svg, senza metadati e con i numeri arrotondati), in alto a destra nella pagina delle carrozzerie
+  const LOGO = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 407 110" aria-hidden="true" focusable="false"><g transform="scale(0.9167)"><rect x="10" y="10" width="46" height="46" rx="13" fill="#4C5BFF"/><rect x="64" y="10" width="46" height="46" rx="13" fill="#4C5BFF"/><rect x="10" y="64" width="46" height="46" rx="13" fill="#4C5BFF"/><circle cx="87" cy="87" r="21" fill="none" stroke="#0B0D12" stroke-width="8"/><circle cx="87" cy="87" r="5" fill="#0B0D12"/></g><path d="M136.3 84.8V75.4L165.9 34.7H137.5V25.2H179.2V34.6L149.3 75.3H180.2V84.8Z M203.6 85.8Q196.8 85.8 191.9 82.9Q186.9 80 184.2 74.7Q181.5 69.4 181.5 62.4Q181.5 55.3 184.2 50Q186.9 44.8 191.8 41.9Q196.7 39 203.3 39Q209.7 39 214.5 41.8Q219.3 44.7 221.9 50Q224.6 55.4 224.6 63V65.4H192.7Q193 71.3 195.9 74.3Q198.8 77.3 203.6 77.3Q210.9 77.3 213 71L224 71.7Q222.1 78.3 216.7 82Q211.3 85.8 203.6 85.8ZM192.7 58.2H213.5Q213 52.7 210.3 50.1Q207.6 47.4 203.3 47.4Q198.9 47.4 196.2 50.2Q193.4 53 192.7 58.2Z M229.6 84.8V40H239.3L239.6 47.6Q241.4 43 245 41Q248.6 39 253 39Q260.4 39 264.4 43.7Q268.3 48.4 268.3 56V84.8H257.6V59.5Q257.6 53.7 255.8 50.7Q254.1 47.7 249.8 47.7Q245.4 47.7 242.9 50.7Q240.3 53.7 240.3 59.5V84.8Z M301.2 86.2Q293.1 86.2 286.9 82.4Q280.7 78.7 277.1 71.8Q273.6 64.8 273.6 55.1Q273.6 45.5 277.1 38.5Q280.5 31.5 286.7 27.7Q292.9 23.8 301.3 23.8Q312.8 23.8 319.1 29.5Q325.4 35.2 327.3 45.3L315.9 45.9Q314.8 40 311.2 36.7Q307.5 33.3 301.3 33.3Q293.8 33.3 289.3 39.2Q284.9 45.1 284.9 55.1Q284.9 65.2 289.4 70.9Q293.9 76.7 301.2 76.7Q307.9 76.7 311.5 73Q315.2 69.4 316.2 63L327.6 63.6Q325.9 74.1 319.2 80.1Q312.5 86.2 301.2 86.2Z M345.5 85.8Q338.5 85.8 334.2 82.6Q329.9 79.4 329.9 73.6Q329.9 67.8 333.5 64.5Q337.1 61.2 344.5 59.8L359.4 56.8Q359.4 47.3 350.7 47.3Q346.9 47.3 344.6 49.1Q342.3 50.9 341.6 54.2L330.6 53.7Q332 46.7 337.2 42.8Q342.4 39 350.7 39Q360.3 39 365.2 43.8Q370.1 48.6 370.1 57.6V73.9Q370.1 75.7 370.8 76.3Q371.4 77 372.6 77H374.1V84.8Q372.6 85.2 370.1 85.2Q366.5 85.2 364 83.6Q361.5 82.1 360.8 78V77.9Q359.1 81.5 355 83.6Q351 85.8 345.5 85.8ZM347.7 78Q353.1 78 356.2 74.9Q359.4 71.8 359.4 66.7V64.2L347.8 66.5Q344.2 67.3 342.6 68.7Q341.1 70.2 341.1 72.6Q341.1 78 347.7 78Z M377 84.8V40H387.1L387.3 48.7Q388.7 44.2 391.3 42.1Q393.9 40 398.1 40H402.2V49.2H398Q392.9 49.2 390.3 51.5Q387.8 53.8 387.8 58.9V84.8Z" fill="#0B0D12"/></svg>';
   /** Colonna blu notte a sinistra (proposta C scelta dal titolare il 2026-11-11): chi è entrato, strumenti, Esci. */
   function laterale(gone) {
     const email = S.utente.email || '', chi = chiSono(), b = [];
     // il Gestore in evidenza (proposta F, 2026-11-11): riquadro bianco sul fondo blu notte, con una riga di spiegazione
     const gestore = vedeGestore() ? `<button type="button" class="lges" data-gestore="1"><span class="lges-i">${ICONA.gestore}</span><b>Gestore</b>
-      <svg class="lges-f" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      <span class="lges-s">Quanto è pieno ogni reparto, sede per sede</span></button>` : '';
+      <svg class="lges-f" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : '';
     if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}Persone</button>`);
     if (gone.length) b.push(`<button type="button" class="lstr" data-eliminate="1" aria-expanded="${!!S.eliminate}">${ICONA.cestino}Carrozzerie eliminate (${gone.length})</button>`);
     b.push(`<button type="button" class="lstr" data-esci="1">${ESCI}Esci</button>`);
     return `<aside class="lside" aria-label="Account e strumenti">
       <div class="lside-tit"><h1>Pianificazione Carrozzeria</h1><p>Ogni carrozzeria ha operai, vetture e impostazioni separati.</p></div>
       <div class="lside-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
-        <span><b>${esc(S.nome || email)}</b><span>${esc(chi.ruolo)} · ${esc(chi.dove)}</span></span></div>
-      ${gestore}<nav class="lside-nav" aria-label="Strumenti">${b.join('')}</nav>
-      <p class="lside-nota">Per tornare a questa pagina usa il pulsante con il nome della carrozzeria, in alto a destra.</p></aside>`;
+        <span><b${S.nome ? '' : ' class="email"'}>${esc(S.nome || email)}</b><span>${esc(chi.ruolo)} · ${esc(chi.dove)}</span></span></div>
+      ${gestore}<nav class="lside-nav" aria-label="Strumenti">${b.join('')}</nav></aside>`;
   }
 
   /* ---------------------------------------------- disposizione (2026-11-11): l'utente ordina le carrozzerie trascinandole e le
@@ -246,14 +267,37 @@ const Accesso = (() => {
   }
   // le liste della pagina, dall'alto: un elenco di carrozzerie per gruppo e per ultimo quelle senza gruppo (id '')
   const liste = () => { const d = disposizione(); return [...d.gruppi.map(g => ({ id: g.id, ids: g.voci.map(s => s.id) })), { id: '', ids: d.sciolte.map(s => s.id) }]; };
+  /* avviso in basso con «Annulla» dopo uno spostamento (2026-11-12): come l'avviso del planner, resta 10 secondi. Sta fuori
+     dalla pagina, che si ridisegna a ogni cambio; il testo arriva al lettore di schermo da una zona di stato sempre presente. */
+  const CHIUDI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  let avviso = null, annuncio = null, tempoAvviso = 0, rimetti = null;
+  function mostraAvviso(testo, annulla) {
+    if (!avviso) {
+      annuncio = document.createElement('p'); annuncio.id = 'lannuncio'; annuncio.setAttribute('role', 'status');
+      avviso = document.createElement('div'); avviso.id = 'lavviso'; avviso.hidden = true;
+      avviso.innerHTML = `<span class="la-t"></span><button type="button" class="la-a">Annulla</button><button type="button" class="la-x" aria-label="Chiudi avviso">${CHIUDI}</button>`;
+      avviso.addEventListener('click', ev => { if (ev.target.closest('.la-a')) annullaSpostamento(); else if (ev.target.closest('.la-x')) chiudiAvviso(); });
+      document.body.append(annuncio, avviso);
+    }
+    rimetti = annulla || null;
+    avviso.querySelector('.la-t').textContent = testo;
+    avviso.querySelector('.la-a').hidden = !annulla;
+    avviso.hidden = false;
+    annuncio.textContent = ''; requestAnimationFrame(() => { annuncio.textContent = testo + (annulla ? ' Per annullare: Ctrl+Z.' : ''); });
+    clearTimeout(tempoAvviso); tempoAvviso = setTimeout(chiudiAvviso, 10000);
+  }
+  function chiudiAvviso() { clearTimeout(tempoAvviso); rimetti = null; if (avviso) avviso.hidden = true; }
+  function annullaSpostamento() { const f = rimetti; chiudiAvviso(); if (f) f(); }
   /** Dopo uno spostamento la pagina cambia subito; il database si aggiorna in un solo passaggio. */
-  function salvaDisposizione(L, fuoco, annuncio) {
+  function salvaDisposizione(L, fuoco, testo, annullabile = true) {
     const vivi = new Set(vive().map(s => s.id));
+    const prima = { gruppi: S.gruppi.map(g => ({ id: g.id, ids: g.carrozzerie.filter(id => vivi.has(id)) })), sciolte: S.ordine.slice() };
     // le carrozzerie eliminate restano nel loro gruppo: se si ripristinano tornano al loro posto
     S.gruppi = L.filter(l => l.id).map(l => { const g = S.gruppi.find(x => x.id === l.id); return g && Object.assign(g, { carrozzerie: l.ids.concat(g.carrozzerie.filter(id => !vivi.has(id))) }); }).filter(Boolean);
     S.ordine = L.find(l => !l.id).ids;
-    S.msg = ''; S.ok = ''; S.annuncio = annuncio || '';
+    S.msg = ''; S.ok = '';
     mostraElenco(fuoco);
+    mostraAvviso(testo, annullabile && (() => salvaDisposizione([...prima.gruppi, { id: '', ids: prima.sciolte }], fuoco, 'Spostamento annullato.', false)));
     sb.rpc('salva_disposizione', { gruppi: S.gruppi.map(g => ({ id: g.id, carrozzerie: g.carrozzerie })), sciolte: S.ordine })
       .then(({ error }) => { if (error) throw error; })
       .catch(async e => { console.error('[carrozzerie] disposizione', e); await aggiorna(); S.msg = 'Spostamento non salvato: riprova.'; mostraElenco(); });
@@ -268,12 +312,16 @@ const Accesso = (() => {
     l.ids.splice(r < 0 ? l.ids.length : r + (dopo ? 1 : 0), 0, id);
     salvaDisposizione(L, `[data-carr="${id}"] .lopen`, nomeDi(id) + ' spostata ' + nomeLista(gruppo) + '.');
   }
-  /** Con la tastiera (Alt + frecce sul nome): ±1 un posto avanti o indietro, ±2 nel gruppo dopo o prima. */
-  function spostaConTasti(id, passo) {
+  // quante schede stanno in una riga della griglia di un gruppo (4, meno su schermi stretti)
+  const colonne = zona => { const g = box.querySelector(`.lgrid[data-zona="${zona}"]`); return g ? getComputedStyle(g).gridTemplateColumns.split(' ').filter(Boolean).length || 1 : 1; };
+  /** Con la tastiera (Alt + frecce sul nome): ←→ un posto, ↑↓ una riga della griglia (2026-11-12). Dal primo posto o dalla
+      prima riga si passa in fondo al gruppo di sopra; dall'ultimo posto o dall'ultima riga all'inizio di quello di sotto. */
+  function spostaConTasti(id, passo, riga) {
     const L = liste(), li = L.findIndex(l => l.ids.includes(id)); if (li < 0) return;
-    const l = L[li], i = l.ids.indexOf(id); l.ids.splice(i, 1);
-    if (passo === -1 && i > 0) l.ids.splice(i - 1, 0, id);
-    else if (passo === 1 && i < l.ids.length) l.ids.splice(i + 1, 0, id);
+    const l = L[li], i = l.ids.indexOf(id), n = riga ? colonne(l.id) : 1, tutte = l.ids.length, j = i + passo * n;
+    l.ids.splice(i, 1);
+    if (passo < 0 && j >= 0) l.ids.splice(j, 0, id);
+    else if (passo > 0 && Math.floor(i / n) < Math.floor((tutte - 1) / n)) l.ids.splice(Math.min(j, tutte - 1), 0, id);
     else if (passo < 0 && li > 0) L[li - 1].ids.push(id);
     else if (passo > 0 && li < L.length - 1) L[li + 1].ids.unshift(id);
     else return;
@@ -286,7 +334,7 @@ const Accesso = (() => {
     const altriGruppi = L.filter(l => l !== g), sciolte = altriGruppi.pop();
     let i = altriGruppi.findIndex(l => l.id === accanto); i = i < 0 ? altriGruppi.length : i + (dopo ? 1 : 0);
     altriGruppi.splice(i, 0, g);
-    salvaDisposizione([...altriGruppi, sciolte], `[data-gmuovi="${id}"]`, 'Gruppo spostato: posto ' + (i + 1) + ' di ' + altriGruppi.length + '.');
+    salvaDisposizione([...altriGruppi, sciolte], `[data-gmuovi="${id}"]`, 'Gruppo «' + ((S.gruppi.find(x => x.id === id) || {}).nome || '') + '» spostato: posto ' + (i + 1) + ' di ' + altriGruppi.length + '.');
   }
 
   // trascinamento con il mouse: presa = { tipo: 'c' (carrozzeria) | 'g' (gruppo), id }
@@ -352,41 +400,58 @@ const Accesso = (() => {
       ${k.avviso ? `<p class="lerr" role="alert">${esc(k.avviso)}</p>` : ''}<ul>${k.voci.map(voce).join('')}</ul>${sedi}
       <p class="lnote">Conteggi del planner e del Gestore dal primo del mese. Il traffico è stimato per eccesso; i numeri esatti sono nella dashboard di Supabase, pagina Usage.</p></details>`;
   }
+  const LENTE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>';
+  const AVANTI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
   function landingHtml() {
-    const last = ultima();
-    const modifica = (id, nome) => `<div class="lcardi editing"><input type="text" maxlength="60" value="${esc(nome)}" data-edit="${id}" aria-label="Nome della carrozzeria">
-      <div class="lact"><button type="button" class="pri" data-save="${id}">Salva</button><button type="button" data-cancel="1">Annulla</button></div></div>`;
-    const spostabili = vive().length > 1;
+    const last = ultima(), q = senzaAccenti(S.cerca.trim()), trova = s => !q || senzaAccenti(s.nome).includes(q), iniziali = sigle(vive());
+    // nome e numero della filiale (2026-11-12): il numero, facoltativo, va nel quadratino al posto delle iniziali;
+    // S.bozza tiene quanto scritto se il salvataggio dà errore
+    const modifica = (id, nome, num) => { const b = S.bozza && S.bozza.id === id ? S.bozza : { nome, num: num || '' }, ini = id === 'nuova' ? '?' : iniziali.get(id) || '?';
+      return `<div class="lcardi editing"><label class="lcampo"><span>Nome</span><input type="text" maxlength="60" value="${esc(b.nome)}" data-edit="${id}"></label>
+      <label class="lcampo"><span>Numero filiale</span><span class="lnum"><span class="lsigla" aria-hidden="true" data-anteprima="${id}" data-iniziali="${esc(ini)}">${esc(b.num || ini)}</span>
+        <input type="text" inputmode="numeric" maxlength="2" value="${esc(b.num)}" data-num="${id}" autocomplete="off"></span></label>
+      <div class="lact"><button type="button" class="pri" data-save="${id}">Salva</button><button type="button" data-cancel="1">Annulla</button></div></div>`; };
+    // durante la ricerca le schede non si spostano: si vedrebbe solo una parte di ogni gruppo
+    const spostabili = vive().length > 1 && !q, sposta = spostabili && S.gruppi.length > 0;
     const card = s => {
-      if (S.modifica === s.id) return modifica(s.id, s.nome);
-      const menu = S.menu === s.id ? `<div class="lmenu" role="menu"><button type="button" role="menuitem" data-ren="${s.id}">Rinomina</button>
-        <button type="button" role="menuitem" data-utenti="${s.id}">Persone</button><button type="button" role="menuitem" class="del" data-del="${s.id}">Elimina</button></div>` : '';
+      if (S.modifica === s.id) return modifica(s.id, s.nome, s.sigla);
+      const tit = titolareDi(s), altrove = S.gruppi.filter(g => !g.carrozzerie.includes(s.id)), inGruppo = altrove.length < S.gruppi.length;
+      // «Sposta nel gruppo» (2026-11-12): l'alternativa al trascinamento, anche per chi non è titolare
+      const menu = S.menu !== s.id ? '' : S.menuSposta
+        ? `<div class="lmenu" role="menu" aria-label="Sposta ${esc(s.nome)} in"><p class="lmtit" aria-hidden="true">Sposta in</p>${altrove.map(g => `<button type="button" role="menuitem" data-dove="${g.id}" data-chi="${s.id}">${esc(g.nome)}</button>`).join('')}
+          ${inGruppo ? `<button type="button" role="menuitem" data-dove="-" data-chi="${s.id}">Senza gruppo</button>` : ''}</div>`
+        : `<div class="lmenu" role="menu">${tit ? `<button type="button" role="menuitem" data-ren="${s.id}">Rinomina</button><button type="button" role="menuitem" data-utenti="${s.id}">Persone</button>` : ''}
+          ${sposta ? `<button type="button" role="menuitem" class="lsub" data-sposta="${s.id}" aria-haspopup="menu">Sposta nel gruppo${AVANTI}</button>` : ''}${tit ? `<button type="button" role="menuitem" class="del" data-del="${s.id}">Elimina</button>` : ''}</div>`;
       return `<div class="lcardi${s.id === last ? ' last' : ''}" data-carr="${s.id}" draggable="${spostabili}"><button type="button" class="lopen" data-sede="${s.id}" title="${esc(s.nome)}"${spostabili ? ' aria-describedby="lcome"' : ''}>
-        <span class="lsigla" aria-hidden="true">${esc(sigla(s.nome))}</span><span class="ltesto"><span class="lnome">${esc(s.nome)}</span><small>${esc(S.admin ? 'Amministratore' : RUOLI[s.ruolo])}${s.id === last ? ' · Ultima usata' : ''}</small></span></button>
-        ${titolareDi(s) ? `<button type="button" class="lgear" data-menu="${s.id}" aria-haspopup="menu" aria-expanded="${S.menu === s.id}" aria-label="Impostazioni di ${esc(s.nome)}" title="Impostazioni">${GEAR}</button>${menu}` : ''}</div>`;
+        <span class="lsigla" aria-hidden="true"><span class="ls-t">${esc(s.sigla || iniziali.get(s.id) || '?')}</span>${spostabili ? ICONA.maniglia : ''}</span><span class="ltesto"><span class="lnome">${esc(s.nome)}</span><small>${esc(S.admin ? 'Amministratore' : RUOLI[s.ruolo])}${s.id === last ? ' · Ultima usata' : ''}</small></span></button>
+        ${tit || sposta ? `<button type="button" class="lgear" data-menu="${s.id}" aria-haspopup="menu" aria-expanded="${S.menu === s.id}" aria-label="${tit ? 'Impostazioni di ' : 'Sposta '}${esc(s.nome)}" title="${tit ? 'Impostazioni' : 'Sposta nel gruppo'}">${GEAR}</button>${menu}` : ''}</div>`;
     };
     const nomeGruppo = (id, nome) => `<header class="lgh editing"><input type="text" maxlength="60" value="${esc(S.nomeGruppo ?? nome)}" data-gedit="${id}" aria-label="Nome del gruppo" placeholder="Per esempio: Zona nord">
       <button type="button" class="pri" data-gsalva="${id}">Salva</button><button type="button" data-gannulla="1">Annulla</button></header>`;
     const gruppo = (g, voci) => `<section class="lgruppo" data-gruppo="${g.id}" aria-label="Gruppo ${esc(g.nome)}">
-      ${S.modGruppo === g.id ? nomeGruppo(g.id, g.nome) : `<header class="lgh" draggable="true" data-gtrascina="${g.id}"><button type="button" class="lmaniglia" data-gmuovi="${g.id}" aria-label="Sposta il gruppo ${esc(g.nome)}" aria-describedby="lcome" title="Trascina per spostare il gruppo">${ICONA.maniglia}</button>
-        <h3>${esc(g.nome)}</h3><span class="lconta">${quante(voci.length)}</span>
+      ${S.modGruppo === g.id ? nomeGruppo(g.id, g.nome) : q ? `<header class="lgh"><h3 title="${esc(g.nome)}">${esc(g.nome)}</h3><span class="lconta">${voci.length} di ${quante(g.voci.length)}</span></header>` : `<header class="lgh" draggable="true" data-gtrascina="${g.id}"><button type="button" class="lmaniglia" data-gmuovi="${g.id}" aria-label="Sposta il gruppo ${esc(g.nome)}" aria-describedby="lcome" title="Trascina per spostare il gruppo">${ICONA.maniglia}</button>
+        <h3 title="${esc(g.nome)}">${esc(g.nome)}</h3><span class="lconta">${quante(voci.length)}</span>
         <span class="lgaz"><button type="button" data-grin="${g.id}">Rinomina</button><button type="button" class="del" data-gdel="${g.id}">Elimina il gruppo</button></span></header>`}
       <div class="lgrid" data-zona="${g.id}">${voci.map(card).join('') || '<p class="lvuoto">Trascina qui le carrozzerie del gruppo.</p>'}</div></section>`;
-    const nuova = S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (piuSedi() ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
-    const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s)), d = disposizione();
+    const nuova = q ? '' : S.modifica === 'nuova' ? modifica('nuova', 'Carrozzeria ' + (vive().length + 1)) : (piuSedi() ? '<button type="button" class="ladd" data-add="1">+ Aggiungi carrozzeria</button>' : '');
+    const gone = S.voci.filter(s => s.eliminata_il && titolareDi(s)), d = disposizione(), sciolteQui = d.sciolte.filter(trova);
     const sciolte = `<section class="lgruppo sciolte" data-gruppo="" aria-label="${d.gruppi.length ? 'Carrozzerie senza gruppo' : 'Carrozzerie'}">
-      ${d.gruppi.length ? `<header class="lgh"><h3>Senza gruppo</h3><span class="lconta">${quante(d.sciolte.length)}</span></header>` : ''}
-      <div class="lgrid" data-zona="">${d.sciolte.map(card).join('')}${d.gruppi.length && !d.sciolte.length ? '<p class="lvuoto">Trascina qui una carrozzeria per toglierla dal suo gruppo.</p>' : ''}${nuova}</div></section>`;
+      ${d.gruppi.length ? `<header class="lgh"><h3>Senza gruppo</h3><span class="lconta">${q ? sciolteQui.length + ' di ' : ''}${quante(d.sciolte.length)}</span></header>` : ''}
+      <div class="lgrid" data-zona="">${sciolteQui.map(card).join('')}${d.gruppi.length && !d.sciolte.length ? '<p class="lvuoto">Trascina qui una carrozzeria per toglierla dal suo gruppo.</p>' : ''}${nuova}</div></section>`;
+    const cerca = vive().length > 5 ? `<label class="lcerca">${LENTE}<input type="search" data-cerca="1" value="${esc(S.cerca)}" placeholder="Cerca carrozzeria" aria-label="Cerca carrozzeria" aria-describedby="lcercaAiuto" autocomplete="off" spellcheck="false"></label>
+      <span class="lnasc" id="lcercaAiuto">Scrivi una parte del nome. Invio apre la prima carrozzeria trovata, Esc cancella la ricerca.</span>` : '';
+    const trovate = vive().filter(trova).length;
     const nuovoGruppo = S.modGruppo === 'nuovo' ? `<section class="lgruppo" data-gruppo="nuovo" aria-label="Nuovo gruppo">${nomeGruppo('nuovo', '')}<p class="lvuoto">Dopo il salvataggio trascina qui le carrozzerie del gruppo.</p></section>` : '';
-    return `<div class="lpag">${laterale(gone)}<main class="lmain">
-      <div class="lbar"><h2 class="ltit">Le tue carrozzerie <span class="lconta">${quante(vive().length)}</span></h2>
-        ${spostabili ? '<button type="button" class="lnuovo" data-gnuovo="1">+ Nuovo gruppo</button>' : ''}</div>
-      ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}<p class="lnasc" role="status">${esc(S.annuncio || '')}</p>${consumiHtml()}
+    return `<div class="lpag">${laterale(gone)}<main class="lmain"><div class="lmarchio" role="img" aria-label="ZenCar">${LOGO}</div>
+      <div class="lbar"><h2 class="ltit">Le tue carrozzerie <span class="lconta">${q ? trovate + ' di ' : ''}${quante(vive().length)}</span></h2>
+        <div class="lbar-az">${cerca}${spostabili ? '<button type="button" class="lnuovo" data-gnuovo="1">+ Nuovo gruppo</button>' : ''}</div></div>
+      ${S.msg ? `<p class="lerr" role="alert">${esc(S.msg)}</p>` : ''}${S.ok ? `<p class="lok" role="status">${esc(S.ok)}</p>` : ''}${consumiHtml()}
       ${gone.length && S.eliminate ? `<section class="lgone" aria-labelledby="lgoneTit"><h3 id="lgoneTit" tabindex="-1">Carrozzerie eliminate (${gone.length})</h3><p class="lnote">Restano recuperabili finché non le elimini definitivamente.</p>
         ${gone.map(s => `<div class="lgrow"><span>${esc(s.nome)}</span><button type="button" data-restore="${s.id}">Ripristina</button><button type="button" class="del" data-wipe="${s.id}">Elimina definitivamente</button></div>`).join('')}</section>` : ''}
-      ${vive().length || nuova ? d.gruppi.map(g => gruppo(g, g.voci)).join('') + nuovoGruppo + sciolte
+      ${q && !trovate ? `<p class="lnote lnessuna">Nessuna carrozzeria contiene «${esc(S.cerca.trim())}».</p>` : ''}
+      ${vive().length || nuova ? d.gruppi.filter(g => !q || g.voci.some(trova)).map(g => gruppo(g, g.voci.filter(trova))).join('') + nuovoGruppo + (q && !sciolteQui.length ? '' : sciolte)
         : '<p class="lnote">Non hai ancora accesso a nessuna carrozzeria: chiedi al titolare di aggiungerti.</p>'}
-      ${spostabili ? '<p class="lnote" id="lcome">Trascina le schede per cambiarne l’ordine o per metterle in un gruppo; con la tastiera usa Alt e le frecce sul nome. I gruppi sono gli stessi del Gestore e li vedi solo tu.</p>' : ''}
+      ${spostabili ? `<p class="lnote" id="lcome">Trascina una scheda per cambiarne l’ordine o per metterla in un gruppo${sposta ? ', oppure usa «Sposta nel gruppo» dall’ingranaggio' : ''}. Con la tastiera: Alt e le frecce sul nome. I gruppi sono gli stessi del Gestore e li vedi solo tu.</p>` : ''}
       </main></div>`;
   }
   function mostraElenco(focusSel) {
@@ -395,22 +460,28 @@ const Accesso = (() => {
     vista('Scegli la carrozzeria').innerHTML = landingHtml();
     box.scrollTop = y;
     const f = (focusSel && box.querySelector(focusSel)) || box.querySelector('[data-edit], [data-gedit]') || box.querySelector('.last .lopen') || box.querySelector('.lopen');
-    if (f) { f.focus({ preventScroll: true }); if (focusSel) f.scrollIntoView({ block: 'nearest' }); if (f.matches('input')) f.select(); }
+    if (f) { f.focus({ preventScroll: true }); if (focusSel) f.scrollIntoView({ block: 'nearest' }); if (f.matches('[data-cerca]')) f.setSelectionRange(f.value.length, f.value.length); else if (f.matches('input')) f.select(); }
   }
   async function aggiorna(ok = '', fuoco = '') {
-    S.menu = null; S.modifica = null; S.modGruppo = null; S.nomeGruppo = undefined; S.annuncio = ''; S.ok = ok;
+    S.menu = null; S.menuSposta = false; S.modifica = null; S.bozza = null; S.modGruppo = null; S.nomeGruppo = undefined; S.ok = ok;
+    chiudiAvviso(); // dopo una rilettura l'avviso non può più annullare
     try { await caricaElenco(); S.msg = ''; } catch (e) { S.msg = testoErrore(e); }
     mostraElenco(fuoco);
   }
   async function salvaNome(id) {
-    const inp = box.querySelector(`[data-edit="${id}"]`);
-    const nome = (inp ? inp.value : '').trim().replace(/\s+/g, ' ');
-    const err = nomeErrore(nome, id);
-    if (err) { S.msg = err; S.ok = ''; return mostraElenco(); }
+    const inp = box.querySelector(`[data-edit="${id}"]`), ni = box.querySelector(`[data-num="${id}"]`);
+    const nome = (inp ? inp.value : '').trim().replace(/\s+/g, ' '), cifre = (ni ? ni.value : '').trim();
+    S.bozza = { id, nome: inp ? inp.value : '', num: cifre };
+    const num = /^\d{1,2}$/.test(cifre) ? cifre.padStart(2, '0') : null, altra = num && vive().find(s => s.id !== id && s.sigla === num);
+    const errNum = cifre && !num ? 'Il numero filiale ha una o due cifre.' : altra ? 'Il numero ' + num + ' è già di ' + altra.nome + '.' : '';
+    const err = nomeErrore(nome, id) || errNum;
+    if (err) { S.msg = err; S.ok = ''; return mostraElenco(errNum && !nomeErrore(nome, id) ? `[data-num="${id}"]` : ''); }
     try {
-      if (id === 'nuova') { const { error } = await sb.rpc('crea_carrozzeria', { nome }); if (error) throw error; }
-      else { const { error } = await sb.from('carrozzerie').update({ nome }).eq('id', id); if (error) throw error; }
-      await aggiorna();
+      if (id === 'nuova') {
+        const { data, error } = await sb.rpc('crea_carrozzeria', { nome }); if (error) throw error;
+        if (num) { const r = await sb.from('carrozzerie').update({ sigla: num }).eq('id', data); if (r.error) throw r.error; }
+      } else { const { error } = await sb.from('carrozzerie').update({ nome, sigla: num }).eq('id', id); if (error) throw error; }
+      S.bozza = null; await aggiorna();
     } catch (e) { S.msg = testoErrore(e); S.ok = ''; mostraElenco(); }
   }
 
@@ -425,7 +496,7 @@ const Accesso = (() => {
     if (t.dataset.gs) { if (t.dataset.gsConferma && !confirm(t.dataset.gsConferma)) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
     if (t.dataset.gsChiudi) return mostraElenco('[data-gestore]');
     if (t.dataset.gsApri) { const g = t.closest('[data-gs-gruppo]'), parte = t.dataset.gsApri; if (g && aperti[parte]) { aperti[parte][g.dataset.gsGruppo] = !g.classList.contains('apri-' + parte); salvaAperti(); mostraAperti(); } return; }
-    S.msg = ''; S.ok = ''; S.annuncio = '';
+    S.msg = ''; S.ok = '';
     if (t.dataset.esci) { try { sessionStorage.removeItem(SIMULA); } catch (e) { } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } await sb.auth.signOut(); return location.reload(); }
     if (t.dataset.eliminate) { S.eliminate = !S.eliminate; return mostraElenco(S.eliminate ? '#lgoneTit' : '[data-eliminate]'); }
     if (t.dataset.gnuovo) { S.modGruppo = 'nuovo'; S.nomeGruppo = undefined; return mostraElenco('[data-gedit]'); }
@@ -433,12 +504,14 @@ const Accesso = (() => {
     if (t.dataset.gannulla) { const id = S.modGruppo; S.modGruppo = null; S.nomeGruppo = undefined; return mostraElenco(id && id !== 'nuovo' ? `[data-gmuovi="${id}"]` : '[data-gnuovo]'); }
     if (t.dataset.gsalva) return salvaGruppo(t.dataset.gsalva);
     if (t.dataset.gmuovi) return; // la maniglia si trascina, o si sposta con Alt e le frecce
-    if (t.dataset.menu) { const id = t.dataset.menu; S.menu = S.menu === id ? null : id; return mostraElenco(S.menu ? `.lmenu [data-ren="${id}"]` : `[data-menu="${id}"]`); }
-    S.menu = null;
-    if (t.dataset.sede) return apri(t.dataset.sede);
-    if (t.dataset.ren) { S.modifica = t.dataset.ren; return mostraElenco(); }
-    if (t.dataset.add) { S.modifica = 'nuova'; return mostraElenco(); }
-    if (t.dataset.cancel) { S.modifica = null; return mostraElenco(); }
+    if (t.dataset.menu) { const id = t.dataset.menu; S.menu = S.menu === id ? null : id; S.menuSposta = false; return mostraElenco(S.menu ? `[data-carr="${id}"] .lmenu [role=menuitem]` : `[data-menu="${id}"]`); }
+    if (t.dataset.sposta) { S.menuSposta = true; return mostraElenco(`[data-carr="${t.dataset.sposta}"] .lmenu [role=menuitem]`); }
+    S.menu = null; S.menuSposta = false;
+    if (t.dataset.dove) return spostaCarrozzeria(t.dataset.chi, t.dataset.dove === '-' ? '' : t.dataset.dove, '', false);
+    if (t.dataset.sede) { S.cerca = ''; return apri(t.dataset.sede); }
+    if (t.dataset.ren) { S.modifica = t.dataset.ren; S.bozza = null; return mostraElenco(); }
+    if (t.dataset.add) { S.modifica = 'nuova'; S.bozza = null; return mostraElenco(); }
+    if (t.dataset.cancel) { S.modifica = null; S.bozza = null; return mostraElenco(); }
     if (t.dataset.save) return salvaNome(t.dataset.save);
     if (t.dataset.utenti) return apriPersone(t.dataset.utenti); // dall'ingranaggio: la finestra Persone filtrata su quella sede
     if (t.dataset.persone) return apriPersone();
@@ -470,21 +543,34 @@ const Accesso = (() => {
   }
   function tasti(ev) {
     if (frecciaCella(ev)) { ev.stopPropagation(); return; }
-    if (ev.target.matches && ev.target.matches('[data-edit]')) {
-      if (ev.key === 'Enter') { ev.preventDefault(); salvaNome(ev.target.dataset.edit); }
-      if (ev.key === 'Escape') { ev.preventDefault(); S.modifica = null; mostraElenco(); }
+    if (ev.target.matches && ev.target.matches('[data-edit], [data-num]')) {
+      if (ev.key === 'Enter') { ev.preventDefault(); salvaNome(ev.target.dataset.edit || ev.target.dataset.num); }
+      if (ev.key === 'Escape') { ev.preventDefault(); S.modifica = null; S.bozza = null; mostraElenco(); }
     } else if (ev.target.matches && ev.target.matches('[data-gedit]')) {
       if (ev.key === 'Enter') { ev.preventDefault(); salvaGruppo(ev.target.dataset.gedit); }
       if (ev.key === 'Escape') { ev.preventDefault(); box.querySelector('[data-gannulla]').click(); }
+    } else if (ev.target.matches && ev.target.matches('[data-cerca]')) {
+      // ricerca (2026-11-12): Invio apre la prima carrozzeria trovata, Esc cancella
+      if (ev.key === 'Enter') { ev.preventDefault(); const p = box.querySelector('.lopen[data-sede]'); if (S.cerca.trim() && p) p.click(); }
+      if (ev.key === 'Escape' && S.cerca) { ev.preventDefault(); S.cerca = ''; mostraElenco('[data-cerca]'); }
+    } else if ((ev.ctrlKey || ev.metaKey) && !ev.altKey && ev.key.toLowerCase() === 'z' && rimetti && !(ev.target.matches && ev.target.matches('input, textarea'))) {
+      ev.preventDefault(); annullaSpostamento();
+    } else if (ev.key === '/' && !(ev.target.matches && ev.target.matches('input, textarea')) && box.querySelector('[data-cerca]')) {
+      ev.preventDefault(); box.querySelector('[data-cerca]').focus();
+    } else if (/^Arrow(Up|Down)$/.test(ev.key) && !ev.altKey && ev.target.closest && ev.target.closest('.lmenu')) {
+      // menu dell'ingranaggio: le frecce passano da una voce all'altra
+      ev.preventDefault();
+      const v = [...ev.target.closest('.lmenu').querySelectorAll('[role=menuitem]')], i = v.indexOf(ev.target);
+      if (v.length) v[(i + (ev.key === 'ArrowDown' ? 1 : -1) + v.length) % v.length].focus();
     } else if (ev.altKey && /^Arrow(Left|Right|Up|Down)$/.test(ev.key) && ev.target.matches && ev.target.matches('.lopen[aria-describedby], [data-gmuovi]')) {
-      // spostamenti con la tastiera: sul nome della carrozzeria ←→ un posto, ↑↓ nel gruppo prima o dopo; sulla maniglia ↑↓ il gruppo
+      // spostamenti con la tastiera: sul nome della carrozzeria ←→ un posto, ↑↓ una riga; sulla maniglia ↑↓ il gruppo
       ev.preventDefault();
       const avanti = ev.key === 'ArrowRight' || ev.key === 'ArrowDown', g = ev.target.dataset.gmuovi;
       if (g) {
         const gruppiPag = liste().filter(l => l.id), i = gruppiPag.findIndex(l => l.id === g), j = i + (avanti ? 1 : -1);
         if (i >= 0 && j >= 0 && j < gruppiPag.length) spostaGruppo(g, gruppiPag[j].id, avanti);
-      } else spostaConTasti(ev.target.dataset.sede, (avanti ? 1 : -1) * (/Up|Down/.test(ev.key) ? 2 : 1));
-    } else if (ev.key === 'Escape' && S.menu) { const id = S.menu; S.menu = null; mostraElenco(`[data-menu="${id}"]`); }
+      } else spostaConTasti(ev.target.dataset.sede, avanti ? 1 : -1, /Up|Down/.test(ev.key));
+    } else if (ev.key === 'Escape' && S.menu) { const id = S.menu; S.menu = null; S.menuSposta = false; mostraElenco(`[data-menu="${id}"]`); }
     ev.stopPropagation(); // le scorciatoie del planning restano spente
   }
 
@@ -611,6 +697,7 @@ const Accesso = (() => {
     // il tabellone resta nell'indirizzo: lo schermo dell'officina, riacceso, torna da solo al tabellone
     try { history.replaceState(null, '', location.pathname + location.search + '#c=' + id + (vista ? '&' + vista + '=1' : '')); } catch (e) { }
     if (box) { box.remove(); box = null; }
+    chiudiAvviso();
     if (ascolto) { sb.removeChannel(ascolto); ascolto = null; } // il gestore non ascolta più le versioni
     sedeAperta = s;
     // tabellone dell'officina (2026-11-11): tutto lo schermo, senza menu dell'account
