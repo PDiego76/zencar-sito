@@ -509,11 +509,6 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #landing .lcerca input:hover { border-color: var(--grid-strong); }
 #landing .lcerca input:focus { outline: none; border-color: var(--tape-chiaro); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tape-chiaro) 22%, transparent); }
 #landing .lnessuna { margin: 0; }
-/* la scheda si prende dal quadratino: passandoci sopra le iniziali diventano la maniglia a sei punti */
-#landing .lsigla svg { display: none; }
-#landing .lcardi[draggable="true"] .lsigla { cursor: grab; }
-#landing .lcardi[draggable="true"]:hover .lsigla .ls-t { display: none; }
-#landing .lcardi[draggable="true"]:hover .lsigla svg { display: block; }
 #landing .lmenu .lmtit { margin: 0; padding: 6px 12px 4px; font: 600 12px var(--f, system-ui); color: var(--muted); }
 #landing .lmenu .lsub { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 #landing .lmenu .lsub svg { color: var(--muted); }
@@ -555,13 +550,7 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #landing .lcardi.editing .lnum input { width: 72px; flex: none; text-align: center; font-variant-numeric: tabular-nums; }
 #landing .lcardi.editing .lact { padding: 2px 0 0; gap: 8px; }
 #landing .lcardi.editing .lact button { height: 34px; padding: 0 16px; border-radius: 7px; font-size: 13px; }
-/* quadratino e maniglia più visibili al passaggio del mouse: la scheda lo scurisce, sopra il quadratino diventa arancione */
-#landing .lpag .lcardi[draggable="true"] .lsigla { transition: background-color .16s, color .16s, box-shadow .16s; }
-#landing .lpag .lcardi[draggable="true"] .lsigla svg { width: 18px; height: 18px; }
-#landing .lpag .lcardi[draggable="true"]:hover .lsigla { background: color-mix(in srgb, var(--navy) 16%, var(--grid)); }
-#landing .lpag .lcardi.last[draggable="true"]:hover .lsigla { background: color-mix(in srgb, var(--navy) 85%, #fff); }
-#landing .lpag .lcardi[draggable="true"] .lsigla:hover, #landing .lpag .lcardi.last[draggable="true"] .lsigla:hover { background: var(--tape-soft); color: var(--tape); box-shadow: inset 0 0 0 1.5px var(--tape-chiaro); }
-@media (prefers-reduced-motion: reduce) { #landing .lpag .lcardi, #landing .lpag .lcardi .lsigla { transition: none; } }
+@media (prefers-reduced-motion: reduce) { #landing .lpag .lcardi, #landing .lpresa { transition: none; } }
 #landing .lgone h3 { margin: 0 0 4px; font: 700 15px var(--f, system-ui); }
 #landing .lgone h3:focus { outline: none; }
 @media (max-width: 900px) {
@@ -608,3 +597,12 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
   #landing .lpag .lopen { min-height: 64px; padding-top: 10px !important; padding-bottom: 10px !important; }
   #landing .lpag .lgear { top: 14px; }
 }
+/* maniglia sempre visibile (proposta M, 2026-11-12): colonnina a sinistra della scheda, divisa da un filetto; da lì si prende la scheda */
+#landing .lpag .lcardi:not(.editing) { flex-direction: row; align-items: stretch; }
+#landing .lpag .lcardi .lopen { flex: 1; min-width: 0; padding-left: 12px !important; }
+#landing .lpresa { width: 30px; flex: none; display: flex; align-items: center; justify-content: center; border-right: 1px solid var(--line); border-radius: 10px 0 0 10px; color: var(--muted); cursor: grab; transition: background-color .16s, color .16s; }
+#landing .lpresa svg { width: 18px; height: 18px; }
+#landing .lpresa:hover { background: var(--surface-2); color: var(--navy); }
+#landing .lcardi.presa .lpresa { cursor: grabbing; }
+/* con poche carrozzerie la pagina è corta: le righe (colonna in cima e contenuto) non si allungano a riempire lo schermo */
+#landing .lpag { align-content: flex-start; }
