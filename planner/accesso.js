@@ -242,17 +242,17 @@ const Accesso = (() => {
   /** Colonna blu notte a sinistra (proposta C scelta dal titolare il 2026-11-11): chi è entrato, strumenti, Esci. */
   function laterale(gone) {
     const email = S.utente.email || '', chi = chiSono(), b = [];
-    // il Gestore in evidenza (proposta F, 2026-11-11): riquadro bianco sul fondo blu notte, con una riga di spiegazione
-    const gestore = vedeGestore() ? `<button type="button" class="lges" data-gestore="1"><span class="lges-i">${ICONA.gestore}</span><b>Gestore</b>
-      <svg class="lges-f" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : '';
-    if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}Persone</button>`);
-    if (gone.length) b.push(`<button type="button" class="lstr" data-eliminate="1" aria-expanded="${!!S.eliminate}">${ICONA.cestino}Carrozzerie eliminate (${gone.length})</button>`);
-    b.push(`<button type="button" class="lstr" data-esci="1">${ESCI}Esci</button>`);
+    // il Gestore (proposta I, 2026-11-12): prima voce del menu, più grande e su una fascia chiara; le carrozzerie restano in primo piano
+    const gestore = vedeGestore() ? `<button type="button" class="lges" data-gestore="1">${ICONA.gestore}<b>Gestore</b>
+      <svg class="lges-f" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : '';
+    if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}<span class="lstr-t">Persone</span></button>`);
+    if (gone.length) b.push(`<button type="button" class="lstr" data-eliminate="1" aria-expanded="${!!S.eliminate}">${ICONA.cestino}<span class="lstr-t">Carrozzerie eliminate (${gone.length})</span></button>`);
+    b.push(`<button type="button" class="lstr" data-esci="1">${ESCI}<span class="lstr-t">Esci</span></button>`);
     return `<aside class="lside" aria-label="Account e strumenti">
       <div class="lside-tit"><h1>Pianificazione Carrozzeria</h1><p>Ogni carrozzeria ha operai, vetture e impostazioni separati.</p></div>
       <div class="lside-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
         <span><b${S.nome ? '' : ' class="email"'}>${esc(S.nome || email)}</b><span>${esc(chi.ruolo)} · ${esc(chi.dove)}</span></span></div>
-      ${gestore}<nav class="lside-nav" aria-label="Strumenti">${b.join('')}</nav></aside>`;
+      <nav class="lside-nav" aria-label="Strumenti">${gestore}${b.join('')}</nav></aside>`;
   }
 
   /* ---------------------------------------------- disposizione (2026-11-11): l'utente ordina le carrozzerie trascinandole e le

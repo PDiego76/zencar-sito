@@ -447,12 +447,11 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #landing .lside-chi b + span { font-size: 13px; color: #d9dde1; }
 #landing .lside-nav { display: grid; gap: 4px; }
 /* il Gestore in evidenza (proposta F, 2026-11-11): riquadro bianco con icona, titolo, spiegazione e freccia arancione */
-#landing .lges { display: grid; grid-template-columns: 40px 1fr 18px; align-items: center; gap: 12px; width: 100%; padding: 14px; border: 0; border-radius: 12px; background: var(--surface); color: var(--ink); text-align: left; cursor: pointer; box-shadow: 0 6px 18px #00000030; }
-#landing .lges:hover { background: var(--tape-soft); }
+#landing .lges { display: grid; grid-template-columns: 18px 1fr 16px; align-items: center; gap: 12px; width: 100%; height: 48px; margin-bottom: 4px; padding: 0 12px; border: 0; border-radius: 10px; background: #ffffff1f; color: #fff; text-align: left; cursor: pointer; }
+#landing .lges:hover { background: #ffffff30; }
 #landing .lges:focus-visible { outline: 3px solid var(--tape-chiaro); outline-offset: 3px; }
-#landing .lges-i { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: var(--navy); color: #fff; }
-#landing .lges b { font: 700 17px var(--f, system-ui); }
-#landing .lges-f { color: var(--tape); }
+#landing .lges b { font: 700 16px var(--f, system-ui); }
+#landing .lges-f { color: #F0A060; }
 #landing .lside .lstr { justify-content: flex-start; gap: 12px; width: 100%; min-width: 0; height: 44px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: #fff; font: 500 15px var(--f, system-ui); text-align: left; }
 #landing .lside .lstr:hover { background: #ffffff17; }
 #landing .lside .lstr[aria-expanded="true"] { background: #ffffff24; }
@@ -583,9 +582,29 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #lannuncio { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; margin: 0; }
 @media (prefers-reduced-motion: reduce) { #landing .lgruppo { transition: none; } #lavviso:not([hidden]) { animation: none; } }
 /* una scheda in modifica è più alta: le altre della stessa riga restano alte 76px */
-#landing .lmain .lgrid { align-items: start; }
+#landing .lmain .lgrid { align-items: start; grid-auto-rows: auto; }
 #landing .lmain .lgrid > .lcardi, #landing .lmain .lgrid > .ladd { height: auto; }
 /* logo ZenCar in alto a destra, sul fondo chiaro (2026-11-12): sul blu notte della colonna i due blu si scontrerebbero */
 #landing .lmarchio { display: flex; justify-content: flex-end; margin: -16px 0 -4px; }
 #landing .lmarchio svg { display: block; height: 26px; width: auto; }
 @media (max-width: 900px) { #landing .lmarchio { margin: 0 0 -6px; } #landing .lmarchio svg { height: 22px; } }
+/* H (2026-11-12): la pagina delle carrozzerie usa Arimo, il carattere del planner; entrando in una carrozzeria il testo non cambia */
+#landing.elenco, #lavviso { --f: Arimo, Arial, "Helvetica Neue", sans-serif; font-family: var(--f); }
+/* K (2026-11-12): sul telefono la colonna diventa una barra compatta: chi è entrato con Persone ed Esci in icona, sotto il Gestore;
+   subito dopo la ricerca e le schede. Il logo scende in fondo alla pagina. */
+@media (max-width: 640px) {
+  #landing .lside { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, auto); align-items: center; gap: 12px 4px; padding: 12px 16px 14px; }
+  #landing .lside-tit { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #landing .lside-chi { grid-column: 1; grid-row: 1; padding: 0; background: none; gap: 10px; min-width: 0; }
+  #landing .lside-chi .conto-ini.grande { width: 36px; height: 36px; line-height: 36px; font-size: 15px; }
+  #landing .lside-nav { display: contents; }
+  #landing .lside .lstr { grid-row: 1; width: 44px; height: 44px; padding: 0; justify-content: center; }
+  #landing .lside .lstr-t { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #landing .lges { grid-column: 1 / -1; grid-row: 2; margin: 0; }
+  #landing .lmain { padding: 16px 16px 32px; gap: 12px; }
+  #landing .lmarchio { order: 99; justify-content: center; margin: 8px 0 0; }
+  #landing .lmain .lbar .ltit { font-size: 21px; }
+  #landing .lcerca input { height: 44px; font-size: 15px; }
+  #landing .lpag .lopen { min-height: 64px; padding-top: 10px !important; padding-bottom: 10px !important; }
+  #landing .lpag .lgear { top: 14px; }
+}
