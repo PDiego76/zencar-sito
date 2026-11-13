@@ -271,6 +271,25 @@ const Accesso = (() => {
      dalla pagina, che si ridisegna a ogni cambio; il testo arriva al lettore di schermo da una zona di stato sempre presente. */
   const CHIUDI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
   let avviso = null, annuncio = null, tempoAvviso = 0, rimetti = null;
+  /* domande nello stile dell'app (2026-11-13), al posto della finestrella grigia del browser. Il titolo è la domanda,
+     sotto le conseguenze; «Annulla», Esc e la chiusura rispondono di no. Il cursore parte da «Annulla». */
+  let dlgC = null;
+  const domanda = (frase, si) => { const i = frase.indexOf('?') + 1; return chiedi(frase.slice(0, i) || frase, frase.slice(i).trim(), si); };
+  function chiedi(titolo, testo, si, pericolo = true) {
+    if (!dlgC) {
+      dlgC = document.createElement('dialog'); dlgC.id = 'lconf'; dlgC.setAttribute('aria-labelledby', 'lconfTit'); dlgC.setAttribute('aria-describedby', 'lconfTesto');
+      dlgC.addEventListener('keydown', ev => ev.stopPropagation());
+      document.body.appendChild(dlgC);
+    }
+    return new Promise(fine => {
+      dlgC.innerHTML = `<div class="dh"><h3 id="lconfTit">${esc(titolo)}</h3></div><div class="db"><p id="lconfTesto">${esc(testo)}</p></div>
+        <div class="df"><button type="button" class="btn" data-no="1">Annulla</button><button type="button" class="btn pri${pericolo ? ' del' : ''}" data-si="1">${esc(si)}</button></div>`;
+      const chiudi = v => { dlgC.onclick = dlgC.onclose = null; if (dlgC.open) dlgC.close(); fine(v); };
+      dlgC.onclick = ev => { const b = ev.target.closest('button'); if (b) chiudi(!!b.dataset.si); };
+      dlgC.onclose = () => chiudi(false);
+      dlgC.showModal(); dlgC.querySelector('[data-no]').focus();
+    });
+  }
   function mostraAvviso(testo, annulla) {
     if (!avviso) {
       annuncio = document.createElement('p'); annuncio.id = 'lannuncio'; annuncio.setAttribute('role', 'status');
@@ -493,7 +512,7 @@ const Accesso = (() => {
     if (t.dataset.gsChat) return apriChat(t.dataset.gsChat, t.dataset.gsTesto || '');
     if (t.dataset.gestore) return apriGestore();
     if (t.dataset.gsAggiorna) return apriGestore({}, true);
-    if (t.dataset.gs) { if (t.dataset.gsConferma && !confirm(t.dataset.gsConferma)) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
+    if (t.dataset.gs) { if (t.dataset.gsConferma && !(await domanda(t.dataset.gsConferma, 'Elimina'))) return; return apriGestore({ azione: t.dataset.gs, id: t.dataset.gsId || '' }); }
     if (t.dataset.gsChiudi) return mostraElenco('[data-gestore]');
     if (t.dataset.gsApri) { const g = t.closest('[data-gs-gruppo]'), parte = t.dataset.gsApri; if (g && aperti[parte]) { aperti[parte][g.dataset.gsGruppo] = !g.classList.contains('apri-' + parte); salvaAperti(); mostraAperti(); } return; }
     S.msg = ''; S.ok = '';
@@ -518,13 +537,13 @@ const Accesso = (() => {
     try {
       if (t.dataset.gdel) {
         const g = S.gruppi.find(x => x.id === t.dataset.gdel);
-        if (!g || !confirm('Eliminare il gruppo «' + g.nome + '»? Le carrozzerie restano: passano tra quelle senza gruppo. Il gruppo sparisce anche dal Gestore.')) return mostraElenco(`[data-gdel="${t.dataset.gdel}"]`);
+        if (!g || !(await chiedi('Eliminare il gruppo «' + g.nome + '»?', 'Le carrozzerie restano: passano tra quelle senza gruppo. Il gruppo sparisce anche dal Gestore.', 'Elimina il gruppo'))) return mostraElenco(`[data-gdel="${t.dataset.gdel}"]`);
         const { error } = await sb.from('gruppi_gestore').delete().eq('id', g.id); if (error) throw error;
         return aggiorna('', '[data-gnuovo]');
       }
       if (t.dataset.del) {
         const s = voce(t.dataset.del);
-        if (!confirm('Eliminare ' + s.nome + '? Sparisce dall’elenco, ma i suoi dati restano recuperabili da «Carrozzerie eliminate».')) return mostraElenco();
+        if (!(await chiedi('Eliminare ' + s.nome + '?', 'Sparisce dall’elenco, ma i suoi dati restano recuperabili da «Carrozzerie eliminate».', 'Elimina'))) return mostraElenco(`[data-menu="${s.id}"]`);
         const { error } = await sb.rpc('elimina_carrozzeria', { c: s.id, definitiva: false }); if (error) throw error;
         return aggiorna();
       }
@@ -534,7 +553,7 @@ const Accesso = (() => {
       }
       if (t.dataset.wipe) {
         const s = voce(t.dataset.wipe);
-        if (!confirm('Eliminare definitivamente ' + s.nome + '? Operai, vetture, impostazioni e copie di sicurezza verranno cancellati e non si potranno recuperare.')) return;
+        if (!(await chiedi('Eliminare definitivamente ' + s.nome + '?', 'Operai, vetture, impostazioni e copie di sicurezza verranno cancellati e non si potranno recuperare.', 'Elimina definitivamente'))) return t.focus();
         t.disabled = true; t.textContent = 'Eliminazione…';
         const { error } = await sb.rpc('elimina_carrozzeria', { c: s.id, definitiva: true }); if (error) throw error;
         return aggiorna();
@@ -722,7 +741,6 @@ const Accesso = (() => {
     if (f) { f.setAttribute('aria-invalid', 'true'); f.setAttribute('aria-describedby', id); f.focus(); }
   }
   // una sola domanda, che dice chiaramente cosa fa «OK»
-  const domandaScarta = (n, chi) => (n === 1 ? 'Hai 1 modifica non salvata' : 'Hai ' + n + ' modifiche non salvate') + (chi ? ' per ' + chi : '') + '.\nOK = scartale, Annulla = continua a modificare.';
   let dlgP = null;
   const P = { dati: null, scelta: null, cerca: '', filtro: '', bozza: null, email: '' };
   const pareEmail = t => /^[^s@]+@[^s@]+.[^s@]+$/.test(t);
@@ -731,23 +749,23 @@ const Accesso = (() => {
     if (!dlgP) {
       dlgP = document.createElement('dialog'); dlgP.id = 'dlgPersone'; dlgP.setAttribute('aria-label', 'Persone');
       document.body.appendChild(dlgP);
-      dlgP.addEventListener('click', ev => {
-        if (ev.target.closest('[data-x]')) { if (lasciaBozza()) dlgP.close(); return; } // niente chiusura con un clic sullo sfondo
+      dlgP.addEventListener('click', async ev => {
+        if (ev.target.closest('[data-x]')) { if (await lasciaBozza()) dlgP.close(); return; } // niente chiusura con un clic sullo sfondo
         // il cursore resta sempre al posto giusto: sulla persona scelta, sul campo email, sulla prima spunta
-        const v = ev.target.closest('[data-psel]'); if (v) { if (v.dataset.psel !== P.scelta && lasciaBozza()) { P.scelta = v.dataset.psel; P.bozza = null; P.nome = null; schedaPersone('', '', '.p-voce.on'); } return; }
+        const v = ev.target.closest('[data-psel]'); if (v) { if (v.dataset.psel !== P.scelta && await lasciaBozza()) { P.scelta = v.dataset.psel; P.bozza = null; P.nome = null; schedaPersone('', '', '.p-voce.on'); } return; }
         // dalla ricerca senza risultati (2026-11-06): l'email cercata passa nel modulo, il cursore va sul ruolo
         const nu = ev.target.closest('[data-pnuova]');
-        if (nu) { if (lasciaBozza()) { P.scelta = 'nuova'; P.bozza = null; P.email = nu.dataset.pemail || ''; schedaPersone('', '', P.email ? '.p-form [name=ruolo]' : '.p-form [name=email]'); } return; }
-        if (ev.target.closest('[data-pvedi]')) { if (lasciaBozza()) { P.filtro = ''; P.bozza = null; schedaPersone('', '', '[data-pcerca]'); } return; }
+        if (nu) { if (await lasciaBozza()) { P.scelta = 'nuova'; P.bozza = null; P.email = nu.dataset.pemail || ''; schedaPersone('', '', P.email ? '.p-form [name=ruolo]' : '.p-form [name=email]'); } return; }
+        if (ev.target.closest('[data-pvedi]')) { if (await lasciaBozza()) { P.filtro = ''; P.bozza = null; schedaPersone('', '', '[data-pcerca]'); } return; }
         if (ev.target.closest('[data-ptutte]')) { const b = bozza(); if (b) { for (const c in b) b[c] = ''; schedaPersone('', '', '[data-psalva]'); } return; }
         if (ev.target.closest('[data-pannulla]')) { P.bozza = null; P.nome = null; return schedaPersone('', '', '[data-psede]'); }
         if (ev.target.closest('[data-psalva]')) return salvaBozza();
       });
-      dlgP.addEventListener('change', ev => {
+      dlgP.addEventListener('change', async ev => {
         const c = ev.target.closest('[data-psede]'); if (c) return sedeSiNo(c);
         const r = ev.target.closest('[data-pruolo]'); if (r) return ruoloInSede(r);
         const f = ev.target.closest('[data-pfiltro]');
-        if (f) { if (!lasciaBozza()) { f.value = P.filtro; return; } P.filtro = f.value; P.bozza = null; if (!visibile(personaScelta())) P.scelta = primaVisibile(); return schedaPersone('', '', '[data-pfiltro]'); }
+        if (f) { if (!(await lasciaBozza())) { f.value = P.filtro; return; } P.filtro = f.value; P.bozza = null; if (!visibile(personaScelta())) P.scelta = primaVisibile(); return schedaPersone('', '', '[data-pfiltro]'); }
         if (ev.target.matches('.p-form [name=ruolo]')) { const s = ev.target.form.querySelector('[data-spiega]'); if (s) s.innerHTML = `<strong>${RUOLI[ev.target.value]}</strong>: ${esc(SPIEGA[ev.target.value])}`; }
       });
       dlgP.addEventListener('input', ev => {
@@ -756,7 +774,7 @@ const Accesso = (() => {
       });
       dlgP.addEventListener('submit', ev => { ev.preventDefault(); aggiungiPersona(ev.target); });
       dlgP.addEventListener('keydown', ev => ev.stopPropagation());
-      dlgP.addEventListener('cancel', ev => { if (!lasciaBozza()) ev.preventDefault(); }); // Esc con modifiche non salvate
+      dlgP.addEventListener('cancel', ev => { if (!daSalvare()) return; ev.preventDefault(); lasciaBozza().then(si => si && dlgP.close()); }); // Esc con modifiche non salvate
     }
     return dlgP;
   }
@@ -824,9 +842,10 @@ const Accesso = (() => {
   const daSalvare = () => modifiche().length + (nomeNuovo() === undefined ? 0 : 1);
   const chiE = p => p.nome ? p.nome + ' (' + p.email + ')' : p.email;
   // modifiche non salvate: una sola domanda, che dice chiaramente cosa succede con «OK»
-  function lasciaBozza() {
+  async function lasciaBozza() {
     const n = daSalvare(); if (!n) return true;
-    if (!confirm(domandaScarta(n, (personaScelta() || {}).email))) return false;
+    const chi = (personaScelta() || {}).email;
+    if (!(await chiedi('Scartare le modifiche?', (n === 1 ? 'Hai 1 modifica non salvata' : 'Hai ' + n + ' modifiche non salvate') + (chi ? ' per ' + chi : '') + '.', 'Scarta'))) return false;
     P.bozza = null; P.nome = null; return true;
   }
   const ruoliTutti = () => `<details class="u-ruoli"><summary>Cosa può fare ogni ruolo</summary><dl>${Object.entries(SPIEGA).map(([k, t]) => `<dt>${RUOLI[k]}</dt><dd>${esc(t)}</dd>`).join('')}</dl></details>`;
@@ -906,7 +925,7 @@ const Accesso = (() => {
     const io = p.id === S.utente.id;
     // l'unica domanda: chi toglie a sé stesso il ruolo di titolare in una sede perde la gestione di quella sede
     const perdo = io ? lista.filter(s => p.ruoli[s.id] === 'titolare' && P.bozza[s.id] !== 'titolare') : [];
-    if (perdo.length && !confirm('Non sarai più titolare di ' + perdo.map(s => s.nome).join(', ') + ': non potrai più gestirne utenti e impostazioni. Continuare?')) return;
+    if (perdo.length && !(await chiedi('Togliere a te il ruolo di titolare?', 'Non sarai più titolare di ' + perdo.map(s => s.nome).join(', ') + ': non potrai più gestirne utenti e impostazioni.', 'Continua'))) return;
     const fatto = { aggiunta: [], tolta: [], ruolo: [], nome: false };
     dlgP.querySelectorAll('.p-azioni button').forEach(x => { x.disabled = true; });
     const salva = dlgP.querySelector('[data-psalva]'); if (salva) salva.textContent = 'Salvataggio…';
