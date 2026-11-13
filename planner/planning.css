@@ -1277,3 +1277,6 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .spanel.feste .fnuova input[type=text]{width:200px}
 .spanel.feste .fnuova .fanno{display:flex;align-items:center;gap:6px;height:36px;font-size:13px;color:var(--ink)}
 .spanel.feste .note{margin-top:8px}
+/* Pianifica: avviso del levabolli nella casella della consegna, per le vetture con grandine (2026-11-13) */
+.plfg label{align-content:start}
+.plgr{display:flex;gap:6px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:#FFF6D6;color:#6B5000;font-size:12px;line-height:1.35}.plgr .gr{margin:1px 0 0;color:#2F6FB2}
