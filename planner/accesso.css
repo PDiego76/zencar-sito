@@ -579,6 +579,8 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 @media (max-width: 900px) { #landing .lmarchio { margin: 0 0 -6px; } #landing .lmarchio svg { height: 22px; } }
 /* H (2026-11-12): la pagina delle carrozzerie usa Arimo, il carattere del planner; entrando in una carrozzeria il testo non cambia */
 #landing.elenco, #lavviso { --f: Arimo, Arial, "Helvetica Neue", sans-serif; font-family: var(--f); }
+/* Gestore e sua chat (2026-11-14, richiesta del titolare): stesso carattere del planner, non più DM Sans */
+#landing.vgestore, #gsChat { --f: Arimo, Arial, "Helvetica Neue", sans-serif; font-family: var(--f); }
 /* K (2026-11-12): sul telefono la colonna diventa una barra compatta: chi è entrato con Persone ed Esci in icona, sotto il Gestore;
    subito dopo la ricerca e le schede. Il logo scende in fondo alla pagina. */
 @media (max-width: 640px) {

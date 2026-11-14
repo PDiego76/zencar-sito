@@ -93,7 +93,7 @@ const Accesso = (() => {
   }
   /** Nome della zona per il lettore di schermo, secondo quello che mostra. */
   // dopo ogni ridisegno della pagina (che ne sostituisce il contenuto) il menu dell'account torna al suo posto
-  const vista = nome => { pagina().setAttribute('aria-label', nome); if (nome !== 'Scegli la carrozzeria') chiudiAvviso(); box.classList.toggle('elenco', nome === 'Scegli la carrozzeria'); if (nome !== 'Accesso') queueMicrotask(() => mostraConto()); return box; };
+  const vista = nome => { pagina().setAttribute('aria-label', nome); if (nome !== 'Scegli la carrozzeria') chiudiAvviso(); box.classList.toggle('elenco', nome === 'Scegli la carrozzeria'); box.classList.toggle('vgestore', nome === 'Gestore'); if (nome !== 'Accesso') queueMicrotask(() => mostraConto()); return box; };
 
   /* Gestore: riquadro con le ore della cella (blu notte come i suggerimenti «i»); il testo lo prepara il server */
   let info = null, infoDi = null;
