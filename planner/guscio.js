@@ -195,6 +195,8 @@ function aggiornaParte(p) {
     else if (!('open' in p.attrs) && el.open) { chiuseDalServer.add(el); el.close(); }
   }
   if (el.id === 'pop' && !el.hidden && (eraNascosto || !el.style.left)) posizionaPop();
+  // riquadro già aperto che cresce (per esempio «Altre azioni»): resta dov'è, ma non esce dal fondo della finestra
+  else if (el.id === 'pop' && !el.hidden) { const z = parseFloat(el.style.zoom) || 1, t = el.getBoundingClientRect().top, ph = el.offsetHeight * z, nt = Math.max(8, Math.min(t, innerHeight - ph - 8)); if (nt !== t) el.style.top = nt / z + 'px'; }
 }
 // ciò che una risposta ha cambiato (testi e elementi nuovi) si accende per un istante e poi sfuma, solo con
 // l'animazione dello stile: nessun attributo aggiunto. Se cambia molto (altra settimana, altra scheda, finestra che
