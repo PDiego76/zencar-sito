@@ -1280,6 +1280,7 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 /* Pianifica: avviso del levabolli nella casella della consegna, per le vetture con grandine (2026-11-13) */
 .plfg label{align-content:start}
 .plgr{display:flex;gap:6px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:#FFF6D6;color:#6B5000;font-size:12px;line-height:1.35}.plgr .gr{margin:1px 0 0;color:#2F6FB2}
+.plfine{font-size:15px}
 /* Viste A, B e C del calendario (2026-11-14): Impostazioni → Aspetto, scelta ricordata su questo computer */
 .calopts{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
 .week .day .mcaps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:6px 12px 10px}
