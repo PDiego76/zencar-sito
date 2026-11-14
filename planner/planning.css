@@ -1280,3 +1280,58 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 /* Pianifica: avviso del levabolli nella casella della consegna, per le vetture con grandine (2026-11-13) */
 .plfg label{align-content:start}
 .plgr{display:flex;gap:6px;align-items:flex-start;padding:6px 8px;border-radius:8px;background:#FFF6D6;color:#6B5000;font-size:12px;line-height:1.35}.plgr .gr{margin:1px 0 0;color:#2F6FB2}
+/* Viste A, B e C del calendario (2026-11-14): Impostazioni → Aspetto, scelta ricordata su questo computer */
+.calopts{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+.week .day .mcaps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:6px 12px 10px}
+.mcap{display:flex;flex-direction:column;gap:3px;min-width:0}
+.mcap i{display:block;height:6px;border-radius:3px;background:var(--grid);overflow:hidden}
+.mcap i b{display:block;height:100%;background:var(--c)}
+.mcap small{font:600 12px var(--f);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.mcap.over small{color:var(--warn)}
+.mcap.zero{opacity:.45}
+.calv-c .mcaps{gap:4px;padding:4px 10px 8px}
+.week .day .dpieno{margin:2px 12px 10px;padding:4px 8px;border-radius:var(--rc);font-size:12px;color:var(--muted)}
+.week .day .dpieno.si{background:color-mix(in srgb,var(--c-lat) 10%,var(--surface));color:var(--warn);font-weight:700}
+.calv-a .djobs,.calv-b .djobs,.calv-c .djobs{min-height:60px}
+.calv-c .job.line .lp{display:none}
+.calv-c .day .dtop{flex-wrap:nowrap;gap:6px;padding:10px 10px 6px}
+.calv-c .day .dtop .tot{font-size:12px;white-space:nowrap}
+.calv-c .day:not(.today) .dtop .dwk small{display:none}
+.calv-c .day .dtop .dnum{font-size:15px;width:28px;height:28px}
+.calv-c .day .dsum .dops{padding:4px 10px}
+.calv-c .day .dsum .dops button{white-space:nowrap;flex:none}
+/* prima disponibilità della settimana (A sopra i giorni, C nella colonna a destra) */
+.prima-sett{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+.pchip{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:3px 10px;border:1px solid var(--line);border-radius:var(--rc);background:var(--surface);font:inherit;font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
+.pchip .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+.pchip small{font-size:12px;color:var(--muted)}
+.pchip.full small{color:var(--bad);font-weight:600}
+.pchip.none small{font-style:italic}
+.pchip:hover{background:color-mix(in srgb,var(--c) 8%,var(--surface))}
+.pchip.on{background:color-mix(in srgb,var(--c) 16%,var(--surface));border-color:var(--c);box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 45%,transparent)}
+.prima-col{display:flex;flex-direction:column;gap:5px}
+.prima-col .pchip{display:grid;grid-template-columns:9px auto 1fr;width:100%}
+.prima-col .pchip small{text-align:right}
+/* «Da guardare»: fascia rossa sopra la settimana (A) o riquadro nella colonna (C) */
+.dg-banda{display:grid;gap:6px;margin:0 0 10px;padding:8px 14px;background:var(--surface);border:2px solid var(--bad);border-radius:var(--rb)}
+.dg-banda h3,.cside h3{margin:0;font-size:15px;display:flex;align-items:center;gap:8px}
+.dg-banda h3{color:var(--bad)}
+.dg-n{background:var(--bad);color:#fff;border-radius:999px;padding:0 8px;font-size:12px;line-height:20px}
+.dg-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px}
+.dg-r .dg-t{flex:1 1 220px;min-width:0}
+.dg-r .dg-a{display:flex;gap:6px;flex-wrap:wrap}
+.dg-banda .dg-r .dg-a{margin-left:auto}
+.calc-wrap{display:flex;gap:14px;align-items:flex-start}
+.calc-wrap .week{flex:1;min-width:0}
+.calside{width:280px;flex:none;display:flex;flex-direction:column;gap:10px}
+.cside{display:grid;gap:8px;padding:12px;background:var(--surface);border:3px solid var(--day-line);border-radius:var(--rb)}
+.cside.dg{border-color:var(--bad)}
+.cside p{margin:0}
+.cside .dg-r{display:grid;gap:6px;padding-top:8px;border-top:1px solid var(--line)}
+.cside .dg-r:first-of-type{border-top:0;padding-top:0}
+.pr-r{display:flex;align-items:center;gap:8px;min-height:32px;padding:4px 6px;border:1px solid var(--line);border-radius:var(--rc);background:var(--surface);font:inherit;font-size:13px;color:var(--ink);cursor:pointer;text-align:left}
+.pr-r:hover{background:var(--surface-2)}
+@media (max-width:1100px){.calc-wrap{flex-direction:column}.calside{width:100%}}
+/* Impostazioni: «Modifiche salvate» sotto il pulsante, senza spostarlo (2026-11-14) */
+.savewrap{position:relative;display:inline-flex}
+.savewrap #settingsSaveFeedback{position:absolute;top:100%;right:0;margin-top:4px;white-space:nowrap;color:var(--muted)}
