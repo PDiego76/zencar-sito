@@ -39,11 +39,13 @@ const eCampo = el => el && /^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) && el.ty
 const diversoDalServer = c => c.type === 'checkbox' || c.type === 'radio' ? c.checked !== c.hasAttribute('checked')
   : c.tagName === 'SELECT' ? c.value !== ((c.querySelector('option[selected]') || c.querySelector('option') || {}).value ?? '')
   : c.value !== (c.getAttribute('value') ?? (c.tagName === 'TEXTAREA' ? c.defaultValue : ''));
-/** I campi della parte di pagina (radice) in cui avviene l'azione: quello dell'azione e quelli cambiati dall'utente.
- *  Gli altri il server li conosce già: rimandarli riporterebbe indietro valori che ha appena ricalcolato. */
+/** I campi della parte di pagina (radice) in cui avviene l'azione: quello dell'azione e quelli scritti dall'utente,
+ *  anche se il server li ha già ricevuti: fuori da una finestra aperta non li ricorda da una richiesta all'altra.
+ *  Gli altri il server li conosce già: rimandarli riporterebbe indietro valori che ha appena ricalcolato
+ *  (un campo ricalcolato dal server esce da «inviato»). */
 function campiDi(r, proprio) {
   const out = [];
-  for (const c of r.querySelectorAll('input, select, textarea')) { if (c.type === 'file' || (c !== proprio && !diversoDalServer(c))) continue; inviato.set(c, statoCampo(c)); out.push(campo(c)); }
+  for (const c of r.querySelectorAll('input, select, textarea')) { if (c.type === 'file' || (c !== proprio && !diversoDalServer(c) && !inviato.has(c))) continue; inviato.set(c, statoCampo(c)); out.push(campo(c)); }
   return out;
 }
 function evento(tipo, el, extra = {}) {
@@ -60,10 +62,11 @@ function evento(tipo, el, extra = {}) {
 let inCoda = [], lavoro = null, anteprime = 0, attesaPv = 0; // attesaPv: anteprima del parcheggio in attesa di partire
 const occupato = () => !!lavoro || inCoda.length > 0 || anteprime > 0;
 // in attesa: richieste in coda o in corso, più le scritture non ancora inviate (usato anche dalle prove automatiche)
-const aggiornaAttesa = () => { window.__inVolo = (lavoro ? 1 : 0) + inCoda.length + anteprime + attesaInput.size + (attesaPv ? 1 : 0); };
+const aggiornaAttesa = () => { window.__inVolo = (lavoro ? 1 : 0) + inCoda.length + anteprime + [...attesaInput.values()].filter(Boolean).length + (attesaPv ? 1 : 0); };
 function invia(ev) {
   if (ev.t === 'anteprima') { anteprime++; aggiornaAttesa(); return richiesta([ev]).finally(() => { anteprime--; aggiornaAttesa(); }); }
-  return new Promise(ok => { inCoda.push({ ev, ok }); aggiornaAttesa(); lavora(); });
+  // lavora parte alla fine del giro: le azioni nate insieme (lo scritto in attesa e l'azione che lo fa partire) viaggiano insieme
+  return new Promise(ok => { inCoda.push({ ev, ok }); aggiornaAttesa(); queueMicrotask(lavora); });
 }
 function lavora() {
   if (lavoro) return;
@@ -173,7 +176,8 @@ function aggiornaParte(p) {
       const toccato = inviato.has(da) && inviato.get(da) !== statoCampo(da);
       let tieni = true;
       if (da.tagName === 'INPUT' && (da.type === 'checkbox' || da.type === 'radio')) { tieni = toccato || da.hasAttribute('checked') === a.hasAttribute('checked'); if (tieni) a.checked = da.checked; }
-      else if (da.tagName === 'INPUT' || da.tagName === 'TEXTAREA') { tieni = toccato || da.getAttribute('value') === a.getAttribute('value'); if (tieni) a.value = da.value; }
+      // il server che rimanda lo stesso valore dell'utente non lo ha cambiato: il campo resta «scritto» (vedi campiDi)
+      else if (da.tagName === 'INPUT' || da.tagName === 'TEXTAREA') { tieni = toccato || da.getAttribute('value') === a.getAttribute('value') || (da.tagName === 'INPUT' ? a.getAttribute('value') ?? '' : a.textContent) === da.value; if (tieni) a.value = da.value; }
       else if (da.tagName === 'SELECT') { const v = s => (s.querySelector('option[selected]') || {}).value; tieni = toccato || v(da) === v(a); if (tieni) a.value = da.value; }
       // il campo ora mostra il valore del server (es. ore convertite in minuti): non è una scrittura dell'utente
       if (!tieni) inviato.delete(da);
@@ -360,13 +364,18 @@ document.addEventListener('click', ev => {
   evento('click', ev.target, { clientX: ev.clientX, clientY: ev.clientY, button: ev.button });
 });
 document.addEventListener('change', ev => { if (radiceDi(ev.target) && ev.target.type !== 'file') evento('change', ev.target); });
-const attesaInput = new Map();
+const attesaInput = new Map(); // campo → timer; null = parte con l'azione successiva
 function svuotaInput() { for (const [el, t] of [...attesaInput]) { clearTimeout(t); attesaInput.delete(el); if (el.isConnected) evento('input', el); } aggiornaAttesa(); }
 document.addEventListener('input', ev => {
-  // i campi segnati data-invio="change" partono solo con 'change', cioè quando si esce dal campo
+  // niente chiamate a ogni tasto (2026-11-15): lo scritto parte con l'azione successiva o uscendo dal campo ('change');
+  // solo i campi segnati data-invio="input" (ricalcolano qualcosa mentre si scrive) partono da soli, dopo una pausa.
+  // I campi segnati data-invio="change" partono solo con 'change'
   const el = ev.target; if (!radiceDi(el) || el.type === 'file' || el.dataset.invio === 'change') return;
-  clearTimeout(attesaInput.get(el)); attesaInput.set(el, setTimeout(() => { attesaInput.delete(el); evento('input', el); aggiornaAttesa(); }, 200)); aggiornaAttesa();
+  clearTimeout(attesaInput.get(el));
+  attesaInput.set(el, el.dataset.invio === 'input' ? setTimeout(() => { attesaInput.delete(el); evento('input', el); aggiornaAttesa(); }, 400) : null); aggiornaAttesa();
 });
+// passando a un'altra scheda del browser lo scritto non resta indietro
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && attesaInput.size) svuotaInput(); });
 document.addEventListener('toggle', ev => { if (radiceDi(ev.target) && ev.target.tagName === 'DETAILS') evento('toggle', ev.target, { aperto: ev.target.open }); }, true);
 document.addEventListener('keydown', ev => {
   if (!C.voce || document.getElementById('landing') || (ev.target.closest && ev.target.closest('#dlgUtenti'))) return;
