@@ -1337,8 +1337,12 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .pr-r:hover{background:var(--surface-2)}
 @media (max-width:1100px){.calc-wrap{flex-direction:column}.calside{width:100%}}
 /* Impostazioni: «Modifiche salvate» sotto il pulsante, senza spostarlo (2026-11-14) */
-.savewrap{position:relative;display:inline-flex}
-.savewrap #settingsSaveFeedback{position:absolute;top:100%;right:0;margin-top:4px;white-space:nowrap;color:var(--muted)}
+/* «Salvato» accanto al titolo della sezione delle impostazioni (2026-11-15): compare e sparisce da solo; l'errore resta */
+.settesta{display:flex;align-items:baseline;gap:12px}
+.setok{font-size:13px;color:var(--ok);font-weight:600}
+.setok.vis{animation:setok 2.5s ease forwards}
+.setok.bad{color:var(--bad);animation:none}
+@keyframes setok{0%,70%{opacity:1}100%{opacity:0}}
 /* passaggio del mouse uguale per tutti i pulsanti (2026-11-14, richiesta del titolare): bianchi e grigi = fondo grigio e bordo
    più scuro; arancioni (e rossi) = colore un po' più scuro, come nella pagina delle carrozzerie */
 .btn:not(.pri):not(.tape):not(:disabled):hover,#pop .actions .btn:not(.pri):not(.tape):not(:disabled):hover,.week .day .djh .dtog:hover,.rcsel button:not([aria-pressed="true"]):hover{background:var(--grid);border-color:var(--grid-strong)}
