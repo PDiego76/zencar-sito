@@ -994,7 +994,8 @@ kbd{display:inline-block;min-width:24px;padding:2px 7px;border:1px solid var(--g
 .sbbar .job .ld{background:var(--c)}
 .sbbar .job b{font-size:14px}
 /* «Finite, da confermare»: la vettura in una scheda un po' più in rilievo */
-.sbbar .job.autocar{background:var(--tape-soft)!important;border-color:var(--tape-line)!important;padding:6px 8px 6px 12px;gap:10px}
+/* verde «completata» (2026-11-16, proposta B scelta dal titolare): l’arancione intorno a una vettura vuol dire solo «selezionata» */
+.sbbar .job.autocar{background:var(--ok-soft)!important;border-color:color-mix(in srgb,var(--ok) 45%,var(--line))!important;padding:6px 8px 6px 12px;gap:10px}
 .sbbar .job.autocar b{font-size:15px;letter-spacing:.02em}
 /* arancione scuro sul fondo arancione chiaro di oggi (5,9:1) */
 .week .day.today .djn{color:#9C4C06}
