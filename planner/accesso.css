@@ -291,6 +291,11 @@ body.attesa { cursor: progress; }
 #dlgPersone .p-riga select:focus-visible { outline: 2px solid var(--tape-chiaro); outline-offset: 2px; }
 #dlgPersone .p-spiega p { margin: 0 0 4px; font-size: 13px; line-height: 1.45; color: var(--muted); }
 #dlgPersone .p-spiega strong { color: var(--ink); }
+#dlgPersone .p-acc { margin-top: 14px; }
+#dlgPersone .p-accbtn { display: flex; flex-wrap: wrap; gap: 8px; }
+#dlgPersone .p-pw { display: grid; gap: 8px; }
+#dlgPersone .p-pw label { display: grid; gap: 4px; font-size: 13px; }
+#dlgPersone .p-pw input { font: inherit; font-size: 14px; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; max-width: 320px; }
 #dlgPersone .p-piede { margin-top: auto; display: grid; gap: 10px; padding-top: 12px; border-top: 1px solid var(--grid); }
 #dlgPersone .p-azioni { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 #dlgPersone .p-azioni .p-conta { margin-left: auto; font: 600 13px var(--f, system-ui); color: var(--tape); }

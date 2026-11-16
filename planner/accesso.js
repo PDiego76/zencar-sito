@@ -174,7 +174,7 @@ const Accesso = (() => {
         if (error) throw error;
         mostraAccesso('accedi', '', 'Se l’email è registrata riceverai un link per scegliere una nuova password.');
       } else {
-        const { error } = await sb.auth.updateUser({ password: v.password });
+        const { error } = await sb.auth.updateUser({ password: v.password, data: { cambia_password: null } });
         if (error) throw error;
         await avvia('Password salvata.');
       }
@@ -760,6 +760,8 @@ const Accesso = (() => {
         if (ev.target.closest('[data-ptutte]')) { const b = bozza(); if (b) { for (const c in b) b[c] = ''; schedaPersone('', '', '[data-psalva]'); } return; }
         if (ev.target.closest('[data-pannulla]')) { P.bozza = null; P.nome = null; return schedaPersone('', '', '[data-psede]'); }
         if (ev.target.closest('[data-psalva]')) return salvaBozza();
+        if (ev.target.closest('[data-plink]')) return mandaLink(ev.target.closest('[data-plink]'));
+        const pv = ev.target.closest('[data-pprov]'); if (pv) { P.prov = pv.dataset.pprov === '1' ? P.scelta : null; return schedaPersone('', '', P.prov ? '.p-pw input' : '[data-pprov]'); }
       });
       dlgP.addEventListener('change', async ev => {
         const c = ev.target.closest('[data-psede]'); if (c) return sedeSiNo(c);
@@ -772,7 +774,7 @@ const Accesso = (() => {
         if (ev.target.matches('[data-pcerca]')) { P.cerca = ev.target.value; filtraElenco(); }
         if (ev.target.matches('[data-pnome]')) { P.nome = ev.target.value; contaBozza(); }
       });
-      dlgP.addEventListener('submit', ev => { ev.preventDefault(); aggiungiPersona(ev.target); });
+      dlgP.addEventListener('submit', ev => { ev.preventDefault(); if (ev.target.matches('.p-pw')) impostaProvvisoria(ev.target); else aggiungiPersona(ev.target); });
       dlgP.addEventListener('keydown', ev => ev.stopPropagation());
       dlgP.addEventListener('cancel', ev => { if (!daSalvare()) return; ev.preventDefault(); lasciaBozza().then(si => si && dlgP.close()); }); // Esc con modifiche non salvate
     }
@@ -889,7 +891,7 @@ const Accesso = (() => {
         ${usati.length && !una ? '<button type="button" class="p-tutte" data-ptutte="1">Togli da tutte le sedi</button>' : ''}
         ${senzaSedi ? `<p class="p-avviso" role="note"><strong>${esc(p.email)} non potrà più entrare${una ? '' : ' in nessuna sede'}</strong> e sparirà da questo elenco. Per riaggiungerlo: «+ Aggiungi».</p>` : ''}
         ${usati.length ? `<div class="p-spiega">${usati.map(r => `<p><strong>${RUOLI[r]}</strong>: ${esc(SPIEGA[r])}</p>`).join('')}</div>` : ''}
-        ${ruoliTutti()}
+        ${ruoliTutti()}${sezionePassword(p)}
         <div class="p-piede"><p class="lnote">${una ? 'Scegli il ruolo o togli la spunta per togliere l’accesso, poi premi «Salva».' : 'Spunta le sedi e scegli il ruolo in ciascuna, poi premi «Salva».'}</p>
         <div class="p-azioni"><span class="p-conta" aria-live="polite">${tot ? (tot === 1 ? '1 modifica da salvare' : tot + ' modifiche da salvare') : ''}</span>
         <button type="button" class="btn" data-pannulla="1"${tot ? '' : ' disabled'}>Annulla</button><button type="button" class="btn ${senzaSedi ? 'p-togli' : 'pri'}" data-psalva="1"${tot ? '' : ' disabled'}>${senzaSedi ? 'Togli l’accesso' : 'Salva'}</button></div></div>`}`;
@@ -904,6 +906,36 @@ const Accesso = (() => {
     const f = fuoco && dlgP.querySelector(fuoco); if (f) f.focus();
   }
   const personaScelta = () => P.dati && P.dati.persone.find(x => x.id === P.scelta);
+  /* password (2026-11-16, chiesto dal titolare): solo l'amministratore della piattaforma reimposta l'accesso di una persona,
+     con il link per email (la persona sceglie la password) o con una password provvisoria, da cambiare al primo accesso.
+     Il controllo vero è nella funzione «utenti» sul server. */
+  function sezionePassword(p) {
+    if (!S.admin || p.admin || p.id === S.utente.id) return '';
+    const aperta = P.prov === p.id;
+    return `<section class="p-sez p-acc" aria-labelledby="pAcc"><h4 id="pAcc">Password</h4>
+      <div class="p-accbtn"><button type="button" class="btn sm" data-plink="1">Manda il link per una nuova password</button>${aperta ? '' : '<button type="button" class="btn sm" data-pprov="1">Imposta una password provvisoria</button>'}</div>
+      ${aperta ? `<form class="p-pw" novalidate><label>Password provvisoria<input type="text" name="pw" minlength="${PW_MIN}" maxlength="72" autocomplete="off" spellcheck="false"></label>
+        <div class="p-accbtn"><button type="button" class="btn sm" data-pprov="0">Annulla</button><button type="submit" class="btn sm pri">Imposta</button></div></form>
+        <p class="lnote">Almeno ${PW_MIN} caratteri. Comunicala tu alla persona: al primo accesso dovrà sceglierne una sua.</p>`
+        : '<p class="lnote">Il link arriva per email da planner@zencar.it. Solo l’amministratore vede questa sezione.</p>'}</section>`;
+  }
+  async function mandaLink(b) {
+    const p = personaScelta(); if (!p) return;
+    b.disabled = true; b.textContent = 'Invio…';
+    try { await chiamaFunzione('utenti', { azione: 'password', utente: p.id, modo: 'link', indirizzo: indirizzo() }); ricaricaPersone('', 'Link per una nuova password inviato a ' + p.email + '.'); }
+    catch (e) { ricaricaPersone(testoErrore(e)); }
+  }
+  async function impostaProvvisoria(form) {
+    const p = personaScelta(), campo = form.querySelector('[name=pw]'), pw = campo.value; if (!p) return;
+    if (pw.length < PW_MIN) return erroreCampo(form, campo.closest('label'), 'Almeno ' + PW_MIN + ' caratteri.');
+    erroreCampo(form);
+    if (!(await chiedi('Impostare la password provvisoria?', 'La password attuale di ' + p.email + ' smette di funzionare. Al primo accesso dovrà sceglierne una sua.', 'Imposta'))) return;
+    const invia = form.querySelector('[type=submit]'); invia.disabled = true; invia.textContent = 'Imposto…';
+    try {
+      await chiamaFunzione('utenti', { azione: 'password', utente: p.id, modo: 'provvisoria', password: pw });
+      P.prov = null; ricaricaPersone('', 'Password provvisoria impostata per ' + p.email + '. Comunicagliela tu: al primo accesso dovrà cambiarla.');
+    } catch (e) { invia.disabled = false; invia.textContent = 'Imposta'; erroreCampo(form, campo.closest('label'), testoErrore(e)); }
+  }
   // conteggio e pulsanti aggiornati mentre si scrive il nome
   function contaBozza() {
     const t = daSalvare(), c = dlgP.querySelector('.p-conta'); if (c) c.textContent = t ? (t === 1 ? '1 modifica da salvare' : t + ' modifiche da salvare') : '';
@@ -1047,6 +1079,7 @@ const Accesso = (() => {
     S.utente = session.user;
     if (!ok && (TIPO_LINK === 'invite' || TIPO_LINK === 'recovery') && !passwordFatta) { passwordFatta = true; return mostraAccesso('password'); }
     passwordFatta = true;
+    if (!ok && session.user.user_metadata && session.user.user_metadata.cambia_password) return mostraAccesso('password', '', 'La password che hai ricevuto è provvisoria: scegline una tua per continuare.');
     try { await caricaElenco(); } catch (e) { S.msg = testoErrore(e); }
     // una sola carrozzeria e nessun ruolo di supervisione: si entra direttamente nel calendario (2026-11-04).
     // Il titolare ritorna alla pagina delle carrozzerie (utenti, nome) con il pulsante del nome: «planning-elenco».
