@@ -1239,12 +1239,15 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .cv-vin input:focus-visible{outline:none!important}
 .cv-vin:focus-within{outline:3px solid var(--focus);outline-offset:2px}
 /* Impostazioni → Documentazione (2026-11-06): parti del manuale, poi il testo (stile del manuale nel riquadro .manuale) */
-.docbar{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px}
-.docparti{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 520px;min-width:0}
-.docp{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 12px;min-height:44px;border:1px solid var(--line);border-radius:var(--rb);background:var(--surface);color:var(--ink);font:inherit;font-size:13px;cursor:pointer;text-align:left}
-.docp b{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--tape)}
+/* parti del manuale (2026-11-16, richiesta del titolare): riquadri tutti uguali su una griglia larga quanto il manuale */
+.docbar{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;max-width:1000px}
+.docparti{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:1fr;gap:8px;flex:1 1 520px;min-width:0}
+.docp{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:1px;min-width:0;padding:8px 12px;min-height:44px;border:1px solid var(--line);border-radius:var(--rb);background:var(--surface);color:var(--ink);font:inherit;font-size:13px;cursor:pointer;text-align:left}
+.docp b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tape)}
 .docp:hover{border-color:var(--tape-chiaro)}
 .docp.on{border-color:var(--tape-chiaro);box-shadow:inset 0 0 0 1px var(--tape-chiaro)}
+@media (max-width:900px){.docparti{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.docparti{grid-template-columns:minmax(0,1fr)}}
 .manuale{display:grid;gap:22px;max-width:1000px;font-family:var(--f-testo);font-size:16px;line-height:1.6;color:var(--ink);scroll-margin-top:90px}
 .manuale .mtesta{background:var(--navy);color:#fff;border-radius:10px;padding:22px 26px;display:grid;gap:8px}
 .manuale .mtesta .num{color:#fff;opacity:.75}
