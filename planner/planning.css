@@ -1467,3 +1467,28 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .vtc.late{background:var(--bad)}
 .vtnote{margin:10px 4px 0}
 @media (max-width:640px){.vtime{min-width:880px}.vth,.vtr{grid-template-columns:150px minmax(0,1fr)}.vtl{padding:10px}.vtl .vtm,.vtl .vtsep{display:none}.vtr .vtl > span:first-child{flex-wrap:wrap;row-gap:4px}}
+/* Operai (2026-11-17): viste «Riepilogo» (proposta A) e «Presenze» (proposta C), scelte in Impostazioni → Aspetto */
+.ophead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}.ophead h2{margin:0}
+.obase{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}.obase input{width:64px;text-align:right}
+.ophead + .note,.vkpi + .note{margin-bottom:14px}
+.mecline{margin:-4px 2px 14px}
+.opsq{overflow-x:auto;position:relative}.wtable.ownew{width:100%}.wtable.ownew .r{text-align:right;white-space:nowrap}
+.wtable.ownew input[type=text]{width:180px}.wtable.ownew select{min-width:200px}
+.osel{display:inline-flex;align-items:center;gap:8px}.dot.vuoto{background:transparent;box-shadow:inset 0 0 0 1.5px var(--grid-strong)}
+.odel{width:34px;padding:0;font-size:18px;color:var(--muted)}.odel:hover{color:var(--bad);border-color:var(--bad)}
+.vkpi.mini div{flex-direction:row;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px}.vkpi.mini b{font-size:18px}
+.vkpi span .dot{margin-right:6px}
+.mgrid.comp .mday{min-height:0;display:flex;flex-direction:row;align-items:baseline;gap:8px;padding:7px 9px}
+.mgrid.comp .mday b{font-size:14px}.mgrid.comp .mday span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mgrid.comp .mday.mod{background:var(--warn-soft);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--warn) 40%,var(--line))}.mgrid.comp .mday.mod .mx{color:var(--warn)}
+.otime{min-width:900px}.otr{display:grid;grid-template-columns:300px minmax(0,1fr);border-top:1px solid var(--line)}
+.otr .vtl > span{gap:8px}.ochip{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;background:color-mix(in srgb,var(--c) 12%,var(--surface));font-size:12px;white-space:nowrap}.ochip .dot{margin-right:6px}
+.otg{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));align-items:stretch}
+.otc{font:600 14px var(--f);font-variant-numeric:tabular-nums;color:var(--ink);margin:8px 3px;min-height:40px;border:0;border-radius:6px;background:color-mix(in srgb,var(--c) 18%,var(--surface));cursor:pointer}
+.otc:hover{box-shadow:inset 0 0 0 1.5px var(--grid-strong)}
+.otc.diversa{background:color-mix(in srgb,var(--c) 34%,var(--surface))}
+.otc.ass{font-size:12px;color:var(--warn);background:repeating-linear-gradient(135deg,var(--warn-soft) 0 6px,var(--surface) 6px 12px);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--warn) 35%,var(--line))}
+.otc.vuota{background:transparent;color:var(--muted);font-weight:400}
+.otot{background:var(--surface-2)}.otot .vtl{background:var(--surface-2)}.otc.tot{background:transparent}.otc.tot.mod{color:var(--warn)}
+.opsqt{margin:20px 0 10px}
+@media (max-width:640px){.otr{grid-template-columns:150px minmax(0,1fr)}.otr .vtl .ochip{display:none}.wtable.ownew select{min-width:150px}.wtable.ownew input[type=text]{width:120px}}
