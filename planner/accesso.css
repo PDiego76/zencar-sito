@@ -674,3 +674,10 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #landing .gs-aggiorna{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
 #landing .gs-aggiorna:hover{background:var(--surface);color:var(--ink);border-color:var(--grid-strong)}
 #landing .gestore > .gs-legenda{margin-top:4px}
+/* Gestore (2026-11-17): i numeri in riquadri come in Vetture */
+#landing .gs-sintesi{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;color:var(--ink)}
+#landing .gs-sintesi > div{background:var(--surface);border:1px solid var(--line);border-radius:var(--rb,14px);padding:12px 14px;display:flex;flex-direction:column;gap:3px;box-shadow:0 3px 12px #152e4910}
+#landing .gs-sintesi span{font-size:13px;color:var(--muted)}
+#landing .gs-sintesi b{font-size:28px;line-height:1.1;color:var(--ink)}
+#landing .gs-sintesi small{font-size:12px;color:var(--muted)}
+#landing .gs-sintesi .rit b{color:var(--bad)}
