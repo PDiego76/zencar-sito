@@ -1011,6 +1011,77 @@ const Accesso = (() => {
   const FRECCIA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   const SCHERMO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
   const ESCI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>';
+  const AIUTO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.3-2.4 3.8"/><path d="M12 17h.01"/></svg>';
+
+  /* ---------------------------------------------- assistenza (2026-11-17, chiesta dal titolare): dal menu dell'account,
+     in tutte le pagine. Prima il manuale, poi un messaggio all'assistenza (funzione «contatti», tipo «assistenza»): nome ed
+     email sono quelli dell'account, la carrozzeria è quella aperta (o una delle proprie). L'indirizzo che riceve le
+     richieste resta solo sul server. */
+  let dlgA = null;
+  const ARGOMENTI = { problema: 'Qualcosa non funziona', uso: 'Domanda sull’uso', idea: 'Suggerimento' };
+  function apriAssistenza() {
+    if (!dlgA) {
+      dlgA = document.createElement('dialog'); dlgA.id = 'dlgAssist'; dlgA.setAttribute('aria-labelledby', 'asTit');
+      document.body.appendChild(dlgA);
+      dlgA.addEventListener('keydown', ev => ev.stopPropagation());
+      dlgA.addEventListener('click', async ev => {
+        if (ev.target.closest('[data-x]')) { if (await lasciaMessaggio()) dlgA.close(); return; }
+        const m = ev.target.closest('[data-as-manuale]'); if (m) return scaricaManuale(m);
+      });
+      dlgA.addEventListener('submit', ev => { ev.preventDefault(); inviaAssistenza(ev.target); });
+      dlgA.addEventListener('cancel', ev => { ev.preventDefault(); lasciaMessaggio().then(si => si && dlgA.close()); });
+    }
+    const sedi = vive(), email = S.utente.email || '';
+    const scelta = sedeAperta ? sedeAperta.id : sedi.length === 1 ? sedi[0].id : '';
+    const sede = sedi.length > 1 ? `<label>Carrozzeria<select name="carrozzeria">${sedeAperta ? '' : '<option value="">Nessuna in particolare</option>'}${sedi.map(s => `<option value="${s.id}"${s.id === scelta ? ' selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>`
+      : `<input type="hidden" name="carrozzeria" value="${esc(scelta)}">`;
+    dlgA.innerHTML = `<div class="dh"><h3 id="asTit">Assistenza</h3><button class="x" type="button" data-x="1" aria-label="Chiudi">×</button></div>
+      <div class="db"><section class="as-man" aria-labelledby="asMan"><div><h4 id="asMan">Prima di scrivere</h4><p>Il manuale spiega ogni pagina passo per passo, con le domande frequenti in fondo. Nel planner lo trovi anche in Impostazioni → Documentazione.</p></div>
+        <button type="button" class="btn" data-as-manuale="1">Scarica il manuale (PDF)</button></section>
+      <form class="as-form" id="asForm" novalidate><h4>Scrivi all’assistenza</h4>
+        <fieldset class="as-arg"><legend>Di cosa si tratta</legend>${Object.entries(ARGOMENTI).map(([k, t], i) => `<label><input type="radio" name="argomento" value="${k}"${i === 0 ? ' checked' : ''}> ${t}</label>`).join('')}</fieldset>
+        ${sede}
+        <label>Messaggio<textarea name="messaggio" rows="6" maxlength="3000" required placeholder="Cosa stavi facendo, cosa ti aspettavi e cosa è successo. Se riguarda una vettura, scrivi la targa."></textarea></label>
+        <label>Telefono per richiamarti <span class="p-fac">(facoltativo)</span><input type="tel" name="telefono" maxlength="40" autocomplete="tel"></label>
+        <p class="lnote">Ti rispondiamo all’email del tuo account, <b>${esc(email)}</b>. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo, per capire meglio la situazione.</p>
+      </form></div>
+      <div class="df"><button type="button" class="btn" data-x="1">Annulla</button><button type="submit" class="btn pri" form="asForm">Invia</button></div>`;
+    if (!dlgA.open) dlgA.showModal();
+    dlgA.querySelector('[name=messaggio]').focus();
+  }
+  async function lasciaMessaggio() {
+    const t = dlgA.querySelector('[name=messaggio]');
+    return !t || !t.value.trim() || chiedi('Scartare il messaggio?', 'Il messaggio non è stato inviato e andrà perso.', 'Scarta');
+  }
+  async function scaricaManuale(b) {
+    const prima = b.textContent; b.disabled = true; b.textContent = 'Preparazione…';
+    try {
+      const d = await chiamaFunzione('manuale', {});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([Uint8Array.from(atob(d.base64), c => c.charCodeAt(0))], { type: d.tipo }));
+      a.download = d.nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    catch (e) { const f = dlgA.querySelector('.as-form'); erroreCampo(f, f.querySelector('h4'), 'Manuale non scaricato: ' + testoErrore(e)); }
+    finally { b.disabled = false; b.textContent = prima; }
+  }
+  async function inviaAssistenza(form) {
+    const v = Object.fromEntries(new FormData(form)), t = form.querySelector('[name=messaggio]');
+    if (!String(v.messaggio || '').trim()) return erroreCampo(form, t, 'Scrivi il messaggio.');
+    erroreCampo(form);
+    const invia = dlgA.querySelector('[type=submit]'); invia.disabled = true; invia.textContent = 'Invio…';
+    const sede = v.carrozzeria && voce(v.carrozzeria), chi = chiSono();
+    const contesto = ['Ruolo: ' + (sede ? (S.admin ? 'Amministratore' : RUOLI[sede.ruolo] || '') : chi.ruolo), 'Pagina: ' + (sedeAperta ? 'planner' : 'carrozzerie'),
+      'Schermo: ' + innerWidth + '×' + innerHeight, 'Browser: ' + navigator.userAgent.slice(0, 300)].join(' · ');
+    try {
+      const d = await chiamaFunzione('contatti', { tipo: 'assistenza', argomento: v.argomento, carrozzeria_id: v.carrozzeria || null, messaggio: v.messaggio, telefono: v.telefono || '', contesto });
+      dlgA.querySelector('.db').innerHTML = `<div class="as-fatto" role="status"><h4>Messaggio inviato</h4><p>Ti rispondiamo all’email del tuo account, <b>${esc(d.email || S.utente.email || '')}</b>. Controlla anche la posta indesiderata.</p></div>`;
+      dlgA.querySelector('.df').innerHTML = '<button type="button" class="btn pri" data-x="1">Chiudi</button>';
+      dlgA.querySelector('.df .btn').focus();
+    } catch (e) {
+      invia.disabled = false; invia.textContent = 'Invia';
+      erroreCampo(form, t, testoErrore(e));
+    }
+  }
+
   // ruolo e dove (2026-11-05): l'email, spesso lunga, si legge passando con il mouse (title) e la sente il lettore di schermo
   function chiSono() {
     if (S.simula) return { ruolo: RUOLI[S.simula] + ' · simulazione', dove: sedeAperta ? sedeAperta.nome : 'Simulazione' };
@@ -1045,13 +1116,14 @@ const Accesso = (() => {
     const vediCome = S.admin && sedeAperta ? `<div class="mc-sez" role="group" aria-label="Vedi il planner come"><span class="mc-tit">Vedi il planner come</span>${Object.entries(RUOLI).map(([k, t]) => `<button type="button" role="menuitem" class="mc-voce mc-ruolo" data-simula="${k}">${esc(t)}</button>`).join('')}<span class="mc-nota">Solo per vedere: le modifiche non si salvano. Clic sull’icona per tornare amministratore.</span></div>` : '';
     menuConto.innerHTML = `<div class="mc-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
       <div><span class="mc-nasc">Account ${esc(email)}: </span>${S.nome ? `<b class="mc-nome">${esc(S.nome)}</b>` : ''}<b>${esc(chi.ruolo)}</b><span>${esc(chi.dove)}</span></div></div>
-      ${vediCome}${sedeAperta && !S.simula ? `<button type="button" role="menuitem" class="mc-voce" data-tabellone="1">${SCHERMO}Apri il tabellone dell’officina</button>` : ''}<button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
+      ${vediCome}${sedeAperta && !S.simula ? `<button type="button" role="menuitem" class="mc-voce" data-tabellone="1">${SCHERMO}Apri il tabellone dell’officina</button>` : ''}<button type="button" role="menuitem" class="mc-voce" data-assistenza="1">${AIUTO}Assistenza</button><button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
     conto.appendChild(menuConto);
     conto.querySelector('[data-conto]').setAttribute('aria-expanded', 'true');
     menuConto.addEventListener('click', async ev => {
       ev.stopPropagation();
       const r = ev.target.closest('[data-simula]'); if (r) return simula(r.dataset.simula);
       // il tabellone si apre in una scheda nuova, da portare a tutto schermo (F11) sullo schermo dell'officina
+      if (ev.target.closest('[data-assistenza]')) { chiudiMenuConto(false); return apriAssistenza(); }
       if (ev.target.closest('[data-tabellone]')) { chiudiMenuConto(false); window.open(location.pathname + location.search + '#c=' + sedeAperta.id + '&tabellone=1', '_blank', 'noopener'); return; }
       if (ev.target.closest('[data-conto-esci]')) { try { sessionStorage.removeItem(SIMULA); } catch (e) { } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } await sb.auth.signOut(); location.reload(); }
     });

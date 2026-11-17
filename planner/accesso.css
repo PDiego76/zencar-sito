@@ -614,9 +614,9 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 /* con poche carrozzerie la pagina è corta: le righe (colonna in cima e contenuto) non si allungano a riempire lo schermo */
 #landing .lpag { align-content: flex-start; }
 /* finestre Persone e conferma con il carattere e i pulsanti della pagina (2026-11-13) */
-#dlgPersone, #lconf { --f: Arimo, Arial, "Helvetica Neue", sans-serif; font-family: var(--f); }
-#dlgPersone .dh h3, #lconf .dh h3 { margin: 0; font: 700 17px var(--f); color: var(--navy); }
-#dlgPersone .btn, #lconf .btn { min-height: 38px; padding: 0 16px; border-radius: 7px; font: 600 14px var(--f); }
+#dlgPersone, #lconf, #dlgAssist { --f: Arimo, Arial, "Helvetica Neue", sans-serif; font-family: var(--f); }
+#dlgPersone .dh h3, #lconf .dh h3, #dlgAssist .dh h3 { margin: 0; font: 700 17px var(--f); color: var(--navy); }
+#dlgPersone .btn, #lconf .btn, #dlgAssist .btn { min-height: 38px; padding: 0 16px; border-radius: 7px; font: 600 14px var(--f); }
 #dlgPersone .p-cerca input, #dlgPersone .p-cerca .btn { height: 38px; min-height: 38px; }
 #dlgPersone .p-cerca .btn { padding: 0 12px; }
 #lconf { width: min(460px, 94vw); }
@@ -638,3 +638,27 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #landing .lgrow button.del:hover { background: color-mix(in srgb, var(--bad) 8%, #fff); border-color: var(--bad); }
 #landing .lgrow button:focus-visible { outline: 2px solid var(--tape-chiaro); outline-offset: 2px; }
 @media (max-width: 640px) { #landing .lgrow span { flex: 1 0 100%; } #landing .lgrow button { flex: 1 0 100%; height: 44px; } }
+/* Assistenza (2026-11-17): prima il manuale, poi il messaggio all'assistenza */
+#dlgAssist { width: min(620px, 96vw); }
+#dlgAssist .db { display: grid; gap: 18px; padding: 18px 22px; max-height: calc(90vh - 130px); overflow-y: auto; }
+#dlgAssist h4 { margin: 0; font: 700 15px var(--f); color: var(--ink); }
+#dlgAssist p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink); }
+#dlgAssist .as-man { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; padding: 14px 16px; border-radius: 8px; background: var(--surface-2); }
+#dlgAssist .as-man > div { flex: 1 1 280px; display: grid; gap: 4px; min-width: 0; }
+#dlgAssist .as-man p { color: var(--muted); font-size: 13px; }
+#dlgAssist .as-form { display: grid; gap: 14px; }
+#dlgAssist .as-form > label { display: grid; gap: 4px; font: 500 13px var(--f); color: var(--ink); }
+#dlgAssist .as-arg { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; border: 0; }
+#dlgAssist .as-arg legend { padding: 0; margin-bottom: 6px; font: 500 13px var(--f); color: var(--ink); }
+#dlgAssist .as-arg label { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; font-size: 14px; cursor: pointer; }
+#dlgAssist .as-arg label:has(input:checked) { border-color: var(--tape-chiaro); background: var(--tape-soft); }
+#dlgAssist .as-arg input { accent-color: var(--tape); margin: 0; }
+#dlgAssist input[type=tel], #dlgAssist select, #dlgAssist textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); font: 400 14px var(--f); }
+#dlgAssist input[type=tel], #dlgAssist select { height: 38px; padding: 0 10px; max-width: 320px; }
+#dlgAssist textarea { padding: 8px 10px; resize: vertical; min-height: 120px; line-height: 1.45; }
+#dlgAssist :is(input, select, textarea):focus { border-color: var(--tape-chiaro); outline: none; box-shadow: 0 0 0 1px var(--tape-chiaro); }
+#dlgAssist .p-fac { font-weight: 400; color: var(--muted); }
+#dlgAssist .lnote { margin: 0; color: var(--muted); font-size: 13px; }
+#dlgAssist .lerr { margin: 0; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, var(--bad) 10%, transparent); color: var(--bad); font-size: 14px; }
+#dlgAssist .as-fatto { display: grid; gap: 6px; padding: 8px 0; }
+@media (max-width: 640px) { #dlgAssist .db { max-height: calc(90vh - 190px); padding: 16px; } #dlgAssist .df { flex-direction: column-reverse; } #dlgAssist .df .btn { width: 100%; min-height: 44px; } }
