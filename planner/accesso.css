@@ -665,3 +665,12 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #dlgAssist .lerr { margin: 0; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, var(--bad) 10%, transparent); color: var(--bad); font-size: 14px; }
 #dlgAssist .as-fatto { display: grid; gap: 6px; padding: 8px 0; }
 @media (max-width: 640px) { #dlgAssist .db { max-height: calc(90vh - 190px); padding: 16px; } #dlgAssist .df { flex-direction: column-reverse; } #dlgAssist .df .btn { width: 100%; min-height: 44px; } }
+/* Coerenza delle pagine (2026-11-17): pulsanti come nel planner. Principale arancione, secondario bianco con filo
+   sottile; «+ Nuovo gruppo» e «Aggiorna» diventano secondari, la legenda del Gestore va in fondo */
+#landing .gs-pri,.gs-chat .gs-pri{border-color:var(--tape-chiaro);background:var(--tape);color:#fff}
+#landing .gs-pri:hover,.gs-chat .gs-pri:hover{background:var(--tape);filter:brightness(.92)}
+#landing .lnuovo{height:36px;border:1px solid var(--line);color:var(--ink)}
+#landing .lnuovo:hover{background:var(--surface);border-color:var(--grid-strong)}
+#landing .gs-aggiorna{border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+#landing .gs-aggiorna:hover{background:var(--surface);color:var(--ink);border-color:var(--grid-strong)}
+#landing .gestore > .gs-legenda{margin-top:4px}

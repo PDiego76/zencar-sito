@@ -1492,3 +1492,27 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .otot{background:var(--surface-2)}.otot .vtl{background:var(--surface-2)}.otc.tot{background:transparent}.otc.tot.mod{color:var(--warn)}
 .opsqt{margin:20px 0 10px}
 @media (max-width:640px){.otr{grid-template-columns:150px minmax(0,1fr)}.otr .vtl .ochip{display:none}.wtable.ownew select{min-width:150px}.wtable.ownew input[type=text]{width:120px}}
+/* ===== Coerenza delle pagine (2026-11-17, proposte 3, 4, 5, 6 e 8 scelte dal titolare) =====
+   4. opzione o filtro scelto: blu notte pieno ovunque; l'arancione resta per l'azione principale, oggi, la vettura
+      selezionata e la scheda della pagina in alto */
+.seg button[aria-pressed="true"]{background:var(--navy)}
+.seg button[aria-pressed="true"]:focus-visible{box-shadow:inset 0 0 0 2px var(--navy),inset 0 0 0 4px #fff}
+.tbopt.on{border-color:var(--navy);box-shadow:0 0 0 1px var(--navy)}
+.opt.on{background:var(--surface);box-shadow:inset 0 0 0 2px var(--navy)}
+.fopt.on,.nfopt.on,.docp.on{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy);background:var(--surface)}
+.setsec.on{border-color:var(--navy);box-shadow:inset 0 0 0 1px var(--navy),0 3px 12px #152e4910}
+/* 5. pulsante secondario: bianco con filo sottile ovunque (prima grigio pieno in molti punti) */
+.btn:not(.pri):not(.tape):not(.danger),#pop .actions .btn:not(.pri):not(.tape){background:var(--surface);border:1px solid var(--line)}
+/* 6. riquadri dei giorni con il filo sottile; bordo arancione di 2 px solo per oggi; tratteggio solo per «chiuso» */
+.week .day .dsum,.week .day .davail,.week .day .djobs,.cside{border:1px solid var(--line)}
+.week .day.today .dsum,.week .day.today .davail,.week .day.today .djobs{border:2px solid var(--tape-chiaro)}
+.week .day.dropt .djobs{border:2px dashed var(--tape-chiaro)}
+.cside.dg{border-color:var(--bad)}
+.pwday{border:1px solid var(--line)}.pwday.today,.pwday.oggi{border:2px solid var(--tape-chiaro)}
+.pwday.off.pass{border-style:solid;border-color:var(--line);background:var(--surface-2)}
+/* 3. navigazione nel tempo: «‹ Oggi ›» e poi il periodo */
+.pwhead h3{margin-left:6px;text-transform:none}
+.seg.vunit{border-color:var(--line)}
+/* 8. legende in fondo al riquadro, pallini e testo a 12 px */
+.legend.rclegend{display:flex;flex-wrap:wrap;gap:6px 18px;margin:12px 4px 0;font-size:12px;color:var(--muted)}
+.legend.rclegend span{display:inline-flex;align-items:center;gap:6px}
