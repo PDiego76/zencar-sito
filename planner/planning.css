@@ -1445,8 +1445,11 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .vtl{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:10px 14px;min-width:0;position:sticky;left:0;z-index:2;background:var(--surface)}
 .vtl .plate{flex:none}
 .vtl > span{display:flex;align-items:center;gap:8px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.vtl .vtm{font-size:13px;overflow:hidden;text-overflow:ellipsis}
-.vtl .status{margin-left:auto;font-size:12px;padding:2px 8px;border:0;border-radius:999px}
+/* stato accanto alla targa, sotto modello e cliente accorciati con «…» (2026-11-17, proposta A scelta dal titolare):
+   con un cliente lungo lo stato restava fuori dalla colonna */
+.vtl .vtx{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vtl .vtm{font-size:13px;color:var(--ink)}
+.vtl .status{flex:none;margin-left:0;font-size:12px;padding:2px 8px;border:0;border-radius:999px}
 .vtr{border-top:1px solid var(--line);cursor:pointer;background:#fff}
 .vtr:hover,.vtr:hover .vtl{background:var(--surface-2)}
 .vtr.focus{box-shadow:inset 3px 0 0 var(--tape-chiaro)}
@@ -1463,4 +1466,4 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .vtc{position:absolute;top:18px;width:12px;height:12px;transform:rotate(45deg);background:var(--navy);border:2px solid var(--surface)}
 .vtc.late{background:var(--bad)}
 .vtnote{margin:10px 4px 0}
-@media (max-width:640px){.vtime{min-width:880px}.vth,.vtr{grid-template-columns:150px minmax(0,1fr)}.vtl{padding:10px}.vtl .vtm{display:none}}
+@media (max-width:640px){.vtime{min-width:880px}.vth,.vtr{grid-template-columns:150px minmax(0,1fr)}.vtl{padding:10px}.vtl .vtm,.vtl .vtsep{display:none}.vtr .vtl > span:first-child{flex-wrap:wrap;row-gap:4px}}
