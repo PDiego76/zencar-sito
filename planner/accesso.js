@@ -1031,7 +1031,7 @@ const Accesso = (() => {
       dlgA.addEventListener('submit', ev => { ev.preventDefault(); inviaAssistenza(ev.target); });
       dlgA.addEventListener('cancel', ev => { ev.preventDefault(); lasciaMessaggio().then(si => si && dlgA.close()); });
     }
-    const sedi = vive(), email = S.utente.email || '';
+    const sedi = vive();
     const scelta = sedeAperta ? sedeAperta.id : sedi.length === 1 ? sedi[0].id : '';
     const sede = sedi.length > 1 ? `<label>Carrozzeria<select name="carrozzeria">${sedeAperta ? '' : '<option value="">Nessuna in particolare</option>'}${sedi.map(s => `<option value="${s.id}"${s.id === scelta ? ' selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>`
       : `<input type="hidden" name="carrozzeria" value="${esc(scelta)}">`;
@@ -1043,7 +1043,7 @@ const Accesso = (() => {
         ${sede}
         <label>Messaggio<textarea name="messaggio" rows="6" maxlength="3000" required placeholder="Cosa stavi facendo, cosa ti aspettavi e cosa è successo. Se riguarda una vettura, scrivi la targa."></textarea></label>
         <label>Telefono per richiamarti <span class="p-fac">(facoltativo)</span><input type="tel" name="telefono" maxlength="40" autocomplete="tel"></label>
-        <p class="lnote">Ti rispondiamo all’email del tuo account, <b>${esc(email)}</b>. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo, per capire meglio la situazione.</p>
+        <p class="lnote">Ti rispondiamo per email. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo, per capire meglio la situazione.</p>
       </form></div>
       <div class="df"><button type="button" class="btn" data-x="1">Annulla</button><button type="submit" class="btn pri" form="asForm">Invia</button></div>`;
     if (!dlgA.open) dlgA.showModal();
@@ -1073,7 +1073,7 @@ const Accesso = (() => {
       'Schermo: ' + innerWidth + '×' + innerHeight, 'Browser: ' + navigator.userAgent.slice(0, 300)].join(' · ');
     try {
       const d = await chiamaFunzione('contatti', { tipo: 'assistenza', argomento: v.argomento, carrozzeria_id: v.carrozzeria || null, messaggio: v.messaggio, telefono: v.telefono || '', contesto });
-      dlgA.querySelector('.db').innerHTML = `<div class="as-fatto" role="status"><h4>Messaggio inviato</h4><p>Ti rispondiamo all’email del tuo account, <b>${esc(d.email || S.utente.email || '')}</b>. Controlla anche la posta indesiderata.</p></div>`;
+      dlgA.querySelector('.db').innerHTML = '<div class="as-fatto" role="status"><h4>Messaggio inviato</h4><p>Ti rispondiamo per email. Controlla anche la posta indesiderata.</p></div>';
       dlgA.querySelector('.df').innerHTML = '<button type="button" class="btn pri" data-x="1">Chiudi</button>';
       dlgA.querySelector('.df .btn').focus();
     } catch (e) {
