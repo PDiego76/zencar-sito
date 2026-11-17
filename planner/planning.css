@@ -4,6 +4,8 @@
   --bg:#edf2f6;
   --surface:#fff;
   --surface-2:#f2f5f9;
+  /* dissolvenze di evidenza (valori cambiati, giorno, scheda, fase riaperta): grigio chiaro, l’arancione resta per oggi e selezione (2026-11-17, titolare) */
+  --evidenza:#e3e8ee;--evidenza-bordo:#c3cdd8;
   --ok-soft:#eef7f2;--warn-soft:#fdf3e2;--bad-soft:#fbeeee;--neu-soft:#eef2f6;
   --ink:#172b43;
   --muted:#52657a;
@@ -171,7 +173,7 @@ body.dragmode,body.dragmode *{cursor:grabbing!important;user-select:none}
 .job.ghost{position:fixed;z-index:80;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.25);transform:rotate(-2deg)}
 
 .day.flash{animation:fl 1.4s ease-out}
-@keyframes fl{0%{box-shadow:0 0 0 4px var(--tape-chiaro)}100%{box-shadow:0 0 0 0 transparent}}
+@keyframes fl{0%{box-shadow:0 0 0 4px var(--evidenza-bordo)}100%{box-shadow:0 0 0 0 transparent}}
 .flowx{margin-left:auto;font-size:12px;color:var(--muted);white-space:nowrap}
 .flowx .bad{color:var(--bad);font-weight:600}
 .pedit{display:grid;gap:6px;border-top:1px solid var(--grid);padding-top:8px}
@@ -492,7 +494,7 @@ dialog .btn:not(.pri):not(.tape){background:var(--surface)}
 .bitem{background:#fff;padding:12px 14px;display:grid;gap:8px}
 .bitem.told{border-left-color:var(--warn)}
 .bt{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.bwhen{margin-left:auto;font-weight:700;font-size:13px}
+.bwhen{flex-basis:100%;font-weight:700;font-size:13px}
 .bwhen.over{color:var(--bad)}
 .bdate{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
 .bdate input{padding:3px 6px;font-size:12px}
@@ -613,7 +615,7 @@ input[type=checkbox]{vertical-align:middle}
 .pcard.rc-ok,.pcard.rc-ok:hover,.pcard.rc-ok.focus{border-color:#3BA569}
 .pcard.rc-att,.pcard.rc-att:hover,.pcard.rc-att.focus{border-color:#E9B90C}
 .pcard.focus{animation:pfocus 1.8s ease-out}
-@keyframes pfocus{0%,35%{background:var(--tape-soft)}100%{background:var(--surface)}}
+@keyframes pfocus{0%,35%{background:var(--evidenza)}100%{background:var(--surface)}}
 .dati{grid-column:1 / -1}
 .bklist{display:grid;gap:4px;max-height:260px;overflow:auto;background:#fff;border:1px solid var(--hair);border-radius:var(--rc);padding:6px}
 .bkrow{display:flex;align-items:center;gap:10px;padding:4px 6px;border-bottom:1px solid var(--line)}
@@ -1216,7 +1218,7 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 /* fase appena riaperta con «Non completata» (2026-11-03): targa e fase lampeggiano per circa due secondi, due volte al
    secondo (sotto la soglia dei lampi pericolosi); con il movimento ridotto resta solo un bordo arancione fisso */
 .week .job.lampo{animation:lampo .5s ease-in-out 4;position:relative;z-index:1}
-@keyframes lampo{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--tape-chiaro);background:rgba(184,90,8,.22)}}
+@keyframes lampo{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 3px var(--evidenza-bordo);background:var(--evidenza)}}
 @media (prefers-reduced-motion: reduce){.week .job.lampo{box-shadow:0 0 0 3px var(--tape-chiaro)}}
 
 /* ruolo Gestore nella carrozzeria (2026-11-04): accanto al nome, l'avviso che la pagina è in sola consultazione */

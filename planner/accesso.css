@@ -176,7 +176,10 @@ body.attesa { cursor: progress; }
 /* Bacheca della carrozzeria */
 .bmsg { display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 14px; border: 1px solid var(--line); border-radius: var(--rb, 8px); background: #fff; font-size: 13px; }
 .bmsg.nuovi { border-color: var(--tape-line); background: var(--tape-soft); }
-.bmsg-i { display: inline-flex; color: var(--navy); }
+/* la busta apre i messaggi come il pulsante a destra, lontano sugli schermi larghi (2026-11-17) */
+.bmsg-i { display: inline-grid; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--navy); cursor: pointer; }
+.bmsg-i:hover { border-color: var(--navy); background: var(--surface-2); }
+.bmsg.nuovi .bmsg-i { border-color: var(--tape-line); }
 .bmsg-t { flex: 1; display: grid; gap: 2px; min-width: 0; }
 .bmsg-t .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bmsg-h { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 14px; }

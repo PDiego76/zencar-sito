@@ -215,8 +215,8 @@ function accendi(els) {
   if (!vis.length || vis.length > MAX_EVIDENZE || !Element.prototype.animate) return;
   // un blocco intero nuovo (altra scheda, sezione che compare) è un cambio di pagina, non un valore cambiato
   if (vis.some(e => { const r = e.getBoundingClientRect(); return r.height > 96 || r.width * r.height > 90000; })) return;
-  const t = getComputedStyle(document.documentElement).getPropertyValue('--tape-chiaro').trim() || '#D9690B';
-  const luce = 'color-mix(in srgb, ' + t + ' 30%, transparent)';
+  // grigio chiaro (2026-11-17, scelta del titolare): l'arancione resta per oggi e selezione
+  const luce = getComputedStyle(document.documentElement).getPropertyValue('--evidenza').trim() || '#e3e8ee';
   for (const e of vis) {
     // acceso per un attimo, poi sfuma fino al colore normale dell'elemento (ultimo fotogramma implicito)
     e.animate([{ backgroundColor: luce, boxShadow: '0 0 0 3px ' + luce, borderRadius: '4px', offset: 0 }, { backgroundColor: luce, boxShadow: '0 0 0 3px ' + luce, borderRadius: '4px', offset: 0.3, easing: 'ease-out' }], { duration: 1400 });
