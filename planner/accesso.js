@@ -1048,7 +1048,7 @@ const Accesso = (() => {
         <fieldset class="as-arg"><legend>Di cosa si tratta</legend>${Object.entries(ARGOMENTI).map(([k, t], i) => `<label><input type="radio" name="argomento" value="${k}"${i === 0 ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
         <div class="as-due">${sede}<label class="as-campo"><span>Telefono per richiamarti <span class="p-fac">(facoltativo)</span></span><input type="tel" name="telefono" maxlength="40" autocomplete="tel"></label></div>
         <label class="as-campo">Messaggio<textarea name="messaggio" rows="6" maxlength="3000" required placeholder="Cosa stavi facendo, cosa ti aspettavi e cosa è successo. Se riguarda una vettura, scrivi la targa."></textarea></label>
-        <p class="lnote">Ti rispondiamo per email. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo.</p>
+        <p class="lnote">Ti rispondiamo per email. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo.<br>Puoi scrivere anche direttamente a <a class="as-mail" href="mailto:assistenza@zencar.it">assistenza@zencar.it</a>.</p>
       </form></div>
       <div class="df"><button type="button" class="btn" data-x="1">Annulla</button><button type="submit" class="btn pri" form="asForm">Invia</button></div>`;
     if (!dlgA.open) dlgA.showModal();

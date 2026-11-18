@@ -1570,3 +1570,12 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 /* chip della carrozzeria più grande (2026-11-18) */
 .sedechip{height:40px;padding:0 16px;font-size:15px;gap:10px}
 .sedechip span{font-size:14px;padding-left:10px}
+/* Interruttori e caselle (2026-11-18, scelta del titolare): interruttore acceso blu notte; casella di spunta ben visibile
+   ma senza colore (bordo scuro, spunta scura su fondo bianco); pulsanti tondi di scelta blu notte. Il fuoco resta arancione. */
+input[type=checkbox].sw:checked{background:var(--navy)}
+input[type=checkbox]:not(.sw){width:18px;height:18px;border:1.5px solid #5b6b7d;border-radius:4px;background:var(--surface)}
+input[type=checkbox]:not(.sw)::before{width:10px;height:5px;border:2.5px solid var(--ink);border-top:0;border-right:0}
+input[type=checkbox]:not(.sw):checked{background:var(--surface);border:2px solid var(--ink)}
+input[type=checkbox]:not(.sw):checked::before{border-color:var(--ink);opacity:1}
+input[type=checkbox]:not(.sw):hover{border-color:var(--ink)}
+.fopt input,.mecok input,.nfopt input,input[type=radio]{accent-color:var(--navy)}

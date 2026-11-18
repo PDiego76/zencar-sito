@@ -703,3 +703,4 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #dlgAssist .as-arg label:has(input:checked) { border-color: var(--navy); background: var(--surface); box-shadow: inset 0 0 0 1px var(--navy); font-weight: 600; }
 #dlgAssist .as-arg input { accent-color: var(--navy); }
 @media (max-width: 640px) { #dlgAssist .as-arg, #dlgAssist .as-due { grid-template-columns: 1fr; } }
+#dlgAssist .as-mail { color: var(--ink); font-weight: 600; user-select: all; }
