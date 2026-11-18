@@ -1561,3 +1561,12 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .mgrid.comp .mday{min-height:34px}
 .sf.sm{height:32px}.sf.sm input[type=number]{height:30px}
 .cv-h input{height:32px}
+/* Intestazione unica delle pagine (2026-11-18, proposta 1, Calendario variante A): titolo e «i» a sinistra, pulsanti a destra */
+.bar.phead{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:40px;margin:0 0 14px}
+.bar.phead h2{margin:0;display:flex;align-items:center;gap:6px}
+.bar.phead .btn{margin:0}
+.bar.phead.ophead{margin-bottom:14px}
+@media (max-width:640px){.bar.phead h2{flex-basis:100%}.bar.phead .spacer{display:none}}
+/* chip della carrozzeria più grande (2026-11-18) */
+.sedechip{height:40px;padding:0 16px;font-size:15px;gap:10px}
+.sedechip span{font-size:14px;padding-left:10px}

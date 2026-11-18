@@ -1122,7 +1122,7 @@ const Accesso = (() => {
     const vediCome = S.admin && sedeAperta ? `<div class="mc-sez${S.simula ? ' mc-sim' : ''}" role="group" aria-label="${S.simula ? 'Simulazione' : 'Vedi il planner come'}">${S.simula ? `<p class="mc-simtxt">Stai vedendo il planner come <b>${esc(RUOLI[S.simula])}</b>. Le modifiche non si salvano.</p><button type="button" role="menuitem" class="mc-voce mc-torna" data-simula="">${TORNA}Torna amministratore</button>` : ''}<span class="mc-tit">${S.simula ? 'Vedi come un altro ruolo' : 'Vedi il planner come'}</span>${Object.entries(RUOLI).map(([k, t]) => `<button type="button" role="menuitem" class="mc-voce mc-ruolo${k === S.simula ? ' on' : ''}" data-simula="${k}"${k === S.simula ? ' aria-current="true"' : ''}>${esc(t)}${k === S.simula ? '<span class="mc-ora">ora</span>' : ''}</button>`).join('')}${S.simula ? '' : '<span class="mc-nota">Solo per vedere: le modifiche non si salvano.</span>'}</div>` : '';
     menuConto.innerHTML = `<div class="mc-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
       <div><span class="mc-nasc">Account ${esc(email)}: </span>${S.nome ? `<b class="mc-nome">${esc(S.nome)}</b>` : ''}<b>${esc(chi.ruolo)}</b><span>${esc(chi.dove)}</span></div></div>
-      ${vediCome}${sedeAperta && !S.simula ? `<button type="button" role="menuitem" class="mc-voce" data-tabellone="1">${SCHERMO}Apri il tabellone dell’officina</button>` : ''}<button type="button" role="menuitem" class="mc-voce" data-assistenza="1">${AIUTO}Assistenza</button><button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
+      ${vediCome}${sedeAperta && !S.simula ? `<button type="button" role="menuitem" class="mc-voce" data-tabellone="1">${SCHERMO}Apri il tabellone dell’officina</button>` : ''}${sedeAperta && !S.simula && (S.admin || sedeAperta.ruolo === 'titolare') ? `<button type="button" role="menuitem" class="mc-voce" data-persone-m="1">${ICONA.persone.replace(/18/g, '16')}Persone</button>` : ''}<button type="button" role="menuitem" class="mc-voce" data-assistenza="1">${AIUTO}Assistenza</button><button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
     conto.appendChild(menuConto);
     conto.querySelector('[data-conto]').setAttribute('aria-expanded', 'true');
     menuConto.addEventListener('click', async ev => {
@@ -1130,6 +1130,8 @@ const Accesso = (() => {
       const r = ev.target.closest('[data-simula]'); if (r) { if (r.dataset.simula === S.simula) return chiudiMenuConto(true); return simula(r.dataset.simula); }
       // il tabellone si apre in una scheda nuova, da portare a tutto schermo (F11) sullo schermo dell'officina
       if (ev.target.closest('[data-assistenza]')) { chiudiMenuConto(false); return apriAssistenza(); }
+      // Persone (2026-11-18): dal planner, filtrata sulla carrozzeria aperta se se ne hanno più d'una
+      if (ev.target.closest('[data-persone-m]')) { chiudiMenuConto(false); return apriPersone(sediMie().length > 1 ? sedeAperta.id : ''); }
       if (ev.target.closest('[data-tabellone]')) { chiudiMenuConto(false); window.open(location.pathname + location.search + '#c=' + sedeAperta.id + '&tabellone=1', '_blank', 'noopener'); return; }
       if (ev.target.closest('[data-conto-esci]')) { try { sessionStorage.removeItem(SIMULA); } catch (e) { } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { } await sb.auth.signOut(); location.reload(); }
     });
