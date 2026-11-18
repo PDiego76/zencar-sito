@@ -1579,3 +1579,20 @@ input[type=checkbox]:not(.sw):checked{background:var(--surface);border:2px solid
 input[type=checkbox]:not(.sw):checked::before{border-color:var(--ink);opacity:1}
 input[type=checkbox]:not(.sw):hover{border-color:var(--ink)}
 .fopt input,.mecok input,.nfopt input,input[type=radio]{accent-color:var(--navy)}
+/* Importa (2026-11-18, proposta 9): caricamento largo in alto (testo a sinistra, pulsanti a destra), sotto lettura e calcolo delle ore */
+.imp{grid-template-columns:minmax(0,1fr)}
+.imp>.drop{grid-template-columns:minmax(0,1fr) auto auto;justify-items:start;align-items:center;text-align:left;column-gap:10px;row-gap:4px;padding:22px 24px}
+.imp>.drop h3,.imp>.drop p{grid-column:1}
+.imp>.drop p{max-width:70ch}
+.imp>.drop [data-a=impmanual]{grid-column:2;grid-row:1/3}
+.imp>.drop [data-a=imppick]{grid-column:3;grid-row:1/3}
+.imp>.drop p.small{grid-column:1/-1}
+.imp-giu{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,420px);gap:16px;align-items:start}
+@media (max-width:900px){ .imp-giu{grid-template-columns:1fr} }
+@media (max-width:640px){ .imp>.drop{grid-template-columns:1fr 1fr} .imp>.drop h3,.imp>.drop p{grid-column:1/-1} .imp>.drop [data-a=impmanual]{grid-column:1;grid-row:3} .imp>.drop [data-a=imppick]{grid-column:2;grid-row:3} .imp>.drop p.small{grid-row:4} .imp>.drop .btn{width:100%;margin-top:8px} }
+/* «Applica coefficienti» spento (2026-11-18): le ore vendute restano al loro posto, invisibili, il testo sotto non si sposta */
+.cv-vg.spento{visibility:hidden}
+/* «Applica coefficienti» torna interruttore (2026-11-18): la regola delle caselle della 0.46.1 lo rendeva una casella
+   quadrata senza spunta visibile; acceso in blu notte come gli altri interruttori */
+.cv-sw input[type=checkbox]{width:34px;height:20px;border:0;border-radius:999px;background:var(--line)}
+.cv-sw input[type=checkbox]:checked{background:var(--navy);border:0}

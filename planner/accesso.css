@@ -704,3 +704,15 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #dlgAssist .as-arg input { accent-color: var(--navy); }
 @media (max-width: 640px) { #dlgAssist .as-arg, #dlgAssist .as-due { grid-template-columns: 1fr; } }
 #dlgAssist .as-mail { color: var(--ink); font-weight: 600; user-select: all; }
+/* Gestore nella cornice delle carrozzerie (2026-11-18, proposta 7): intestazione come «Le tue carrozzerie», controlli in riga */
+#landing .lmain.gs-main { max-width: none; }
+#landing .gs-main .lcard.gestore { width: 100%; padding: 0; background: transparent; border: 0; box-shadow: none; display: grid; gap: 18px; }
+#landing .gs-head.lbar { display: flex; grid-template-columns: none; align-items: center; }
+#landing .gs-head .ltit:focus { outline: none; }
+#landing .gs-ctl.lbar-az { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0; border: 0; background: transparent; }
+#landing .gs-ctl.lbar-az .gs-agg { grid-column: auto; padding: 0 4px 0 0; border: 0; gap: 10px; }
+#landing .gs-ctl.lbar-az label { grid-column: auto; gap: 8px; }
+#landing .gs-sub { margin: -6px 0 0; }
+#landing .lges.on { background: #ffffff30; box-shadow: inset 0 0 0 1.5px #ffffff60; }
+#landing.vgestore { display: block; padding: 0; }
+#landing.vgestore #conto { display: none; }

@@ -212,6 +212,7 @@ const Accesso = (() => {
 
   // icone della colonna laterale e dei gruppi (strumenti dal 2026-11-05, colonna dal 2026-11-11)
   const ICONA = {
+    carrozzerie: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
     gestore: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>',
     persone: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
     cestino: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>',
@@ -240,10 +241,12 @@ const Accesso = (() => {
   // logo ZenCar (assets/zencar-logo.svg, senza metadati e con i numeri arrotondati), in alto a destra nella pagina delle carrozzerie
   const LOGO = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 407 110" aria-hidden="true" focusable="false"><g transform="scale(0.9167)"><rect x="10" y="10" width="46" height="46" rx="13" fill="#4C5BFF"/><rect x="64" y="10" width="46" height="46" rx="13" fill="#4C5BFF"/><rect x="10" y="64" width="46" height="46" rx="13" fill="#4C5BFF"/><circle cx="87" cy="87" r="21" fill="none" stroke="#0B0D12" stroke-width="8"/><circle cx="87" cy="87" r="5" fill="#0B0D12"/></g><path d="M136.3 84.8V75.4L165.9 34.7H137.5V25.2H179.2V34.6L149.3 75.3H180.2V84.8Z M203.6 85.8Q196.8 85.8 191.9 82.9Q186.9 80 184.2 74.7Q181.5 69.4 181.5 62.4Q181.5 55.3 184.2 50Q186.9 44.8 191.8 41.9Q196.7 39 203.3 39Q209.7 39 214.5 41.8Q219.3 44.7 221.9 50Q224.6 55.4 224.6 63V65.4H192.7Q193 71.3 195.9 74.3Q198.8 77.3 203.6 77.3Q210.9 77.3 213 71L224 71.7Q222.1 78.3 216.7 82Q211.3 85.8 203.6 85.8ZM192.7 58.2H213.5Q213 52.7 210.3 50.1Q207.6 47.4 203.3 47.4Q198.9 47.4 196.2 50.2Q193.4 53 192.7 58.2Z M229.6 84.8V40H239.3L239.6 47.6Q241.4 43 245 41Q248.6 39 253 39Q260.4 39 264.4 43.7Q268.3 48.4 268.3 56V84.8H257.6V59.5Q257.6 53.7 255.8 50.7Q254.1 47.7 249.8 47.7Q245.4 47.7 242.9 50.7Q240.3 53.7 240.3 59.5V84.8Z M301.2 86.2Q293.1 86.2 286.9 82.4Q280.7 78.7 277.1 71.8Q273.6 64.8 273.6 55.1Q273.6 45.5 277.1 38.5Q280.5 31.5 286.7 27.7Q292.9 23.8 301.3 23.8Q312.8 23.8 319.1 29.5Q325.4 35.2 327.3 45.3L315.9 45.9Q314.8 40 311.2 36.7Q307.5 33.3 301.3 33.3Q293.8 33.3 289.3 39.2Q284.9 45.1 284.9 55.1Q284.9 65.2 289.4 70.9Q293.9 76.7 301.2 76.7Q307.9 76.7 311.5 73Q315.2 69.4 316.2 63L327.6 63.6Q325.9 74.1 319.2 80.1Q312.5 86.2 301.2 86.2Z M345.5 85.8Q338.5 85.8 334.2 82.6Q329.9 79.4 329.9 73.6Q329.9 67.8 333.5 64.5Q337.1 61.2 344.5 59.8L359.4 56.8Q359.4 47.3 350.7 47.3Q346.9 47.3 344.6 49.1Q342.3 50.9 341.6 54.2L330.6 53.7Q332 46.7 337.2 42.8Q342.4 39 350.7 39Q360.3 39 365.2 43.8Q370.1 48.6 370.1 57.6V73.9Q370.1 75.7 370.8 76.3Q371.4 77 372.6 77H374.1V84.8Q372.6 85.2 370.1 85.2Q366.5 85.2 364 83.6Q361.5 82.1 360.8 78V77.9Q359.1 81.5 355 83.6Q351 85.8 345.5 85.8ZM347.7 78Q353.1 78 356.2 74.9Q359.4 71.8 359.4 66.7V64.2L347.8 66.5Q344.2 67.3 342.6 68.7Q341.1 70.2 341.1 72.6Q341.1 78 347.7 78Z M377 84.8V40H387.1L387.3 48.7Q388.7 44.2 391.3 42.1Q393.9 40 398.1 40H402.2V49.2H398Q392.9 49.2 390.3 51.5Q387.8 53.8 387.8 58.9V84.8Z" fill="#0B0D12"/></svg>';
   /** Colonna blu notte a sinistra (proposta C scelta dal titolare il 2026-11-11): chi è entrato, strumenti, Esci. */
-  function laterale(gone) {
+  // attiva (2026-11-18): 'gestore' quando la colonna accompagna il Gestore: «Gestore» evidenziato e, in cima, «Le tue carrozzerie»
+  function laterale(gone, attiva = '') {
     const email = S.utente.email || '', chi = chiSono(), b = [];
     // il Gestore (proposta I, 2026-11-12): prima voce del menu, più grande e su una fascia chiara; le carrozzerie restano in primo piano
-    const gestore = vedeGestore() ? `<button type="button" class="lges" data-gestore="1">${ICONA.gestore}<b>Gestore</b>
+    if (attiva === 'gestore') b.push(`<button type="button" class="lstr" data-gs-chiudi="1">${ICONA.carrozzerie}<span class="lstr-t">Le tue carrozzerie</span></button>`);
+    const gestore = vedeGestore() ? `<button type="button" class="lges${attiva === 'gestore' ? ' on' : ''}" data-gestore="1"${attiva === 'gestore' ? ' aria-current="page"' : ''}>${ICONA.gestore}<b>Gestore</b>
       <svg class="lges-f" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : '';
     if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}<span class="lstr-t">Persone</span></button>`);
     if (gone.length) b.push(`<button type="button" class="lstr" data-eliminate="1" aria-expanded="${!!S.eliminate}">${ICONA.cestino}<span class="lstr-t">Carrozzerie eliminate (${gone.length})</span></button>`);
@@ -254,7 +257,7 @@ const Accesso = (() => {
       <div class="lside-tit"><h1>Pianificazione Carrozzeria</h1><p>Ogni carrozzeria ha operai, vetture e impostazioni separati.</p></div>
       <div class="lside-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
         <span><b${S.nome ? '' : ' class="email"'}>${esc(S.nome || email)}</b><span>${esc(chi.ruolo)} · ${esc(chi.dove)}</span></span></div>
-      <nav class="lside-nav" aria-label="Strumenti">${gestore}${b.join('')}</nav></aside>`;
+      <nav class="lside-nav" aria-label="Strumenti">${attiva === 'gestore' ? b.shift() : ''}${gestore}${b.join('')}</nav></aside>`;
   }
 
   /* ---------------------------------------------- disposizione (2026-11-11): l'utente ordina le carrozzerie trascinandole e le
@@ -598,6 +601,8 @@ const Accesso = (() => {
 
   /* ---------------------------------------------- gestore: cruscotto di tutte le carrozzerie (pagina preparata dal server) */
   /** tranquillo: aggiornamento dei dati (tasto «Aggiorna» o ogni 10 minuti) senza spostare il fuoco né la posizione. */
+  // cornice della pagina delle carrozzerie (2026-11-18, proposta 7): colonna a sinistra, Gestore a destra
+  const corniceGestore = html => `<div class="lpag">${laterale(S.voci.filter(s => s.eliminata_il && titolareDi(s)), 'gestore')}<main class="lmain gs-main">${html}</main></div>`;
   async function apriGestore(extra = {}, tranquillo = false) {
     if (tranquillo && gestoreInCorso) return;
     let n = 2; try { n = +localStorage.getItem('planning-gestore-settimane') || 2; } catch (e) { }
@@ -607,17 +612,17 @@ const Accesso = (() => {
       prima.setAttribute('aria-busy', 'true');
       // il tasto «Aggiorna» mostra che la lettura è in corso
       if (agg) { agg.disabled = true; agg.classList.add('in-corso'); agg.lastElementChild.textContent = 'Aggiorno…'; }
-    } else b.innerHTML = '<div class="lcard gestore"><div class="lhead"><h1>Gestore</h1><p>Calcolo della saturazione di tutte le carrozzerie…</p></div></div>';
+    } else b.innerHTML = corniceGestore('<div class="lcard gestore"><div class="gs-head lbar"><h2 class="ltit">Gestore</h2></div><p class="lnote">Calcolo della saturazione di tutte le carrozzerie…</p></div>');
     try {
       // ora: solo l'orologio fisso delle prove (il server la accetta solo in locale, con CONSENTI_ORA_FINTA)
       // larghezza: solo per dividere le settimane in fasce che entrano nella pagina
-      const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, larghezza: (larghezzaGestore = b.clientWidth), ora: window.__ORA_FINTA || null }, extra));
+      const r = await chiamaFunzione('gestore', Object.assign({ settimane: n, larghezza: (larghezzaGestore = ((b.querySelector('.gs-main') || b).clientWidth - 80)), ora: window.__ORA_FINTA || null }, extra));
       if (n0 !== richiestaGestore || !b.isConnected) return; // è partita una richiesta più recente: vale quella
       const su = b.scrollTop, fuocoAgg = agg && (document.activeElement === agg || document.activeElement === document.body);
       nascondiInfo();
-      b.innerHTML = r.html; mostraAperti(); lettoGestore = Date.now(); ascoltaVersioni();
+      b.innerHTML = corniceGestore(r.html); mostraAperti(); lettoGestore = Date.now(); ascoltaVersioni();
       if (tranquillo) { b.scrollTop = su; const x = b.querySelector('[data-gs-aggiorna]'); if (x && (fuocoAgg || document.activeElement === document.body)) x.focus({ preventScroll: true }); }
-      else { const f = b.querySelector('.gs-form input') || b.querySelector('.gs-head h1'); if (f) f.focus({ preventScroll: true }); } // all'apertura il cursore va sul titolo, non su un campo (2026-11-05)
+      else { const f = b.querySelector('.gs-form input') || b.querySelector('.gs-head .ltit'); if (f) f.focus({ preventScroll: true }); } // all'apertura il cursore va sul titolo, non su un campo (2026-11-05)
     } catch (e) {
       if (n0 !== richiestaGestore) return;
       // aggiornamento non riuscito: resta la pagina di prima, si riprova al prossimo giro
