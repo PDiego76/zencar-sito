@@ -716,3 +716,12 @@ body.vista-tabellone > header.top, body.vista-tabellone > #main { display: none;
 #landing .lges.on { background: #ffffff30; box-shadow: inset 0 0 0 1.5px #ffffff60; }
 #landing.vgestore { display: block; padding: 0; }
 #landing.vgestore #conto { display: none; }
+/* Pagina di accesso (2026-11-18, proposta C scelta dal titolare): logo ZenCar sopra il riquadro; «Accedi» in blu notte come
+   i pulsanti dell'applicazione; campo selezionato nel blu del marchio (#4C5BFF), senza l'arancione */
+#landing .llogo { display: flex; justify-content: center; margin: 0 0 22px; }
+#landing .llogo svg { display: block; height: 44px; width: auto; }
+#landing .modulo .btn.pri { background: var(--navy); border-color: var(--navy); color: #fff; }
+#landing .modulo .btn.pri:hover { background: #24405f; border-color: #24405f; }
+#landing .modulo input:focus { border-color: #4C5BFF; box-shadow: 0 0 0 2px #4C5BFF; }
+#landing .modulo input:focus-visible { outline: none !important; }
+#landing .modulo .btn.pri:focus-visible { outline: 3px solid #4C5BFF !important; outline-offset: 3px; }

@@ -148,7 +148,8 @@ const Accesso = (() => {
         campi: '<label>Nuova password<input type="password" name="password" autocomplete="new-password" required minlength="' + PW_MIN + '"></label>' +
           '<label>Ripeti la password<input type="password" name="conferma" autocomplete="new-password" required minlength="' + PW_MIN + '"></label>', fondo: '' }
     }[modo];
-    vista('Accesso').innerHTML = `<div class="lcard stretta"><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>${M.sotto}</p></div>
+    // logo ZenCar sopra il riquadro (2026-11-18, proposta C)
+    vista('Accesso').innerHTML = `<div class="lcard stretta"><div class="llogo" role="img" aria-label="ZenCar">${LOGO}</div><div class="lhead"><h1>Pianificazione Carrozzeria</h1><p>${M.sotto}</p></div>
       ${msg ? `<p class="lerr" role="alert" id="accErr">${esc(msg)}</p>` : ''}${ok ? `<p class="lok" role="status">${esc(ok)}</p>` : ''}
       <form class="modulo" data-modo-form="${modo}" novalidate${msg ? ' aria-describedby="accErr"' : ''}>${M.campi}<button type="submit" class="btn pri">${M.pulsante}</button>${M.fondo ? `<div>${M.fondo}</div>` : ''}</form></div>`;
     const em = box.querySelector('input[name=email]'); if (em && email0) em.value = email0;
