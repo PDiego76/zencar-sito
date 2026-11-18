@@ -247,6 +247,8 @@ const Accesso = (() => {
       <svg class="lges-f" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : '';
     if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}<span class="lstr-t">Persone</span></button>`);
     if (gone.length) b.push(`<button type="button" class="lstr" data-eliminate="1" aria-expanded="${!!S.eliminate}">${ICONA.cestino}<span class="lstr-t">Carrozzerie eliminate (${gone.length})</span></button>`);
+    // Assistenza anche dalla pagina delle carrozzerie (2026-11-18): qui il cerchio dell’account è nascosto
+    b.push(`<button type="button" class="lstr" data-assist-l="1">${AIUTO.replace(/16/g, "18")}<span class="lstr-t">Assistenza</span></button>`);
     b.push(`<button type="button" class="lstr" data-esci="1">${ESCI}<span class="lstr-t">Esci</span></button>`);
     return `<aside class="lside" aria-label="Account e strumenti">
       <div class="lside-tit"><h1>Pianificazione Carrozzeria</h1><p>Ogni carrozzeria ha operai, vetture e impostazioni separati.</p></div>
@@ -534,6 +536,7 @@ const Accesso = (() => {
     if (t.dataset.save) return salvaNome(t.dataset.save);
     if (t.dataset.utenti) return apriPersone(t.dataset.utenti); // dall'ingranaggio: la finestra Persone filtrata su quella sede
     if (t.dataset.persone) return apriPersone();
+    if (t.dataset.assistL) return apriAssistenza();
     try {
       if (t.dataset.gdel) {
         const g = S.gruppi.find(x => x.id === t.dataset.gdel);
@@ -1011,6 +1014,7 @@ const Accesso = (() => {
   const FRECCIA = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
   const SCHERMO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>';
   const ESCI = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/></svg>';
+  const TORNA = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>';
   const AIUTO = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 4.9.7c0 1.7-2.4 2.3-2.4 3.8"/><path d="M12 17h.01"/></svg>';
 
   /* ---------------------------------------------- assistenza (2026-11-17, chiesta dal titolare): dal menu dell'account,
@@ -1032,18 +1036,19 @@ const Accesso = (() => {
       dlgA.addEventListener('cancel', ev => { ev.preventDefault(); lasciaMessaggio().then(si => si && dlgA.close()); });
     }
     const sedi = vive();
-    const scelta = sedeAperta ? sedeAperta.id : sedi.length === 1 ? sedi[0].id : '';
-    const sede = sedi.length > 1 ? `<label>Carrozzeria<select name="carrozzeria">${sedeAperta ? '' : '<option value="">Nessuna in particolare</option>'}${sedi.map(s => `<option value="${s.id}"${s.id === scelta ? ' selected' : ''}>${esc(s.nome)}</option>`).join('')}</select></label>`
-      : `<input type="hidden" name="carrozzeria" value="${esc(scelta)}">`;
+    // la carrozzeria (2026-11-18): dentro una carrozzeria è quella e non si cambia; si sceglie solo dalla pagina delle carrozzerie
+    const fissa = sedeAperta || (sedi.length === 1 ? sedi[0] : null);
+    const sede = fissa ? `<div class="as-campo"><span>Carrozzeria</span><input type="hidden" name="carrozzeria" value="${esc(fissa.id)}"><span class="as-fisso">${esc(fissa.nome)}</span></div>`
+      : sedi.length ? `<label class="as-campo"><span>Carrozzeria</span><select name="carrozzeria"><option value="">Nessuna in particolare</option>${sedi.map(s => `<option value="${s.id}">${esc(s.nome)}</option>`).join('')}</select></label>`
+      : '<input type="hidden" name="carrozzeria" value="">';
     dlgA.innerHTML = `<div class="dh"><h3 id="asTit">Assistenza</h3><button class="x" type="button" data-x="1" aria-label="Chiudi">×</button></div>
-      <div class="db"><section class="as-man" aria-labelledby="asMan"><div><h4 id="asMan">Prima di scrivere</h4><p>Il manuale spiega ogni pagina passo per passo, con le domande frequenti in fondo. Nel planner lo trovi anche in Impostazioni → Documentazione.</p></div>
+      <div class="db"><section class="as-man" aria-labelledby="asMan"><div><h4 id="asMan">Prima di scrivere</h4><p>Il manuale spiega ogni pagina passo per passo, con le domande frequenti in fondo.</p></div>
         <button type="button" class="btn" data-as-manuale="1">Scarica il manuale (PDF)</button></section>
       <form class="as-form" id="asForm" novalidate><h4>Scrivi all’assistenza</h4>
-        <fieldset class="as-arg"><legend>Di cosa si tratta</legend>${Object.entries(ARGOMENTI).map(([k, t], i) => `<label><input type="radio" name="argomento" value="${k}"${i === 0 ? ' checked' : ''}> ${t}</label>`).join('')}</fieldset>
-        ${sede}
-        <label>Messaggio<textarea name="messaggio" rows="6" maxlength="3000" required placeholder="Cosa stavi facendo, cosa ti aspettavi e cosa è successo. Se riguarda una vettura, scrivi la targa."></textarea></label>
-        <label>Telefono per richiamarti <span class="p-fac">(facoltativo)</span><input type="tel" name="telefono" maxlength="40" autocomplete="tel"></label>
-        <p class="lnote">Ti rispondiamo per email. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo, per capire meglio la situazione.</p>
+        <fieldset class="as-arg"><legend>Di cosa si tratta</legend>${Object.entries(ARGOMENTI).map(([k, t], i) => `<label><input type="radio" name="argomento" value="${k}"${i === 0 ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
+        <div class="as-due">${sede}<label class="as-campo"><span>Telefono per richiamarti <span class="p-fac">(facoltativo)</span></span><input type="tel" name="telefono" maxlength="40" autocomplete="tel"></label></div>
+        <label class="as-campo">Messaggio<textarea name="messaggio" rows="6" maxlength="3000" required placeholder="Cosa stavi facendo, cosa ti aspettavi e cosa è successo. Se riguarda una vettura, scrivi la targa."></textarea></label>
+        <p class="lnote">Ti rispondiamo per email. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo.</p>
       </form></div>
       <div class="df"><button type="button" class="btn" data-x="1">Annulla</button><button type="submit" class="btn pri" form="asForm">Invia</button></div>`;
     if (!dlgA.open) dlgA.showModal();
@@ -1069,7 +1074,7 @@ const Accesso = (() => {
     erroreCampo(form);
     const invia = dlgA.querySelector('[type=submit]'); invia.disabled = true; invia.textContent = 'Invio…';
     const sede = v.carrozzeria && voce(v.carrozzeria), chi = chiSono();
-    const contesto = ['Ruolo: ' + (sede ? (S.admin ? 'Amministratore' : RUOLI[sede.ruolo] || '') : chi.ruolo), 'Pagina: ' + (sedeAperta ? 'planner' : 'carrozzerie'),
+    const contesto = ['Ruolo: ' + (sede ? (S.admin ? 'Amministratore' + (S.simula ? ' (in simulazione: ' + RUOLI[S.simula] + ')' : '') : RUOLI[sede.ruolo] || '') : chi.ruolo), 'Pagina: ' + (sedeAperta ? 'planner' : 'carrozzerie'),
       'Schermo: ' + innerWidth + '×' + innerHeight, 'Browser: ' + navigator.userAgent.slice(0, 300)].join(' · ');
     try {
       const d = await chiamaFunzione('contatti', { tipo: 'assistenza', argomento: v.argomento, carrozzeria_id: v.carrozzeria || null, messaggio: v.messaggio, telefono: v.telefono || '', contesto });
@@ -1094,13 +1099,13 @@ const Accesso = (() => {
     if (!S.utente) return togliConto();
     if (!conto) {
       conto = document.createElement('div'); conto.id = 'conto';
-      // in simulazione l'icona riporta subito alle piene funzioni di amministratore
-      conto.addEventListener('click', ev => { if (ev.target.closest('[data-conto]')) { ev.stopPropagation(); if (S.simula) return simula(''); apriMenuConto(!menuConto); } });
+      // in simulazione (2026-11-18) l'icona apre il menu come per tutti: in cima «Torna amministratore» e il cambio di ruolo
+      conto.addEventListener('click', ev => { if (ev.target.closest('[data-conto]')) { ev.stopPropagation(); apriMenuConto(!menuConto); } });
       conto.addEventListener('keydown', ev => { ev.stopPropagation(); if (ev.key === 'ArrowDown' && !menuConto) { ev.preventDefault(); apriMenuConto(true); } });
     }
     const email = S.utente.email || '', chi = chiSono(), ini = (S.nome || email).charAt(0).toUpperCase();
-    conto.innerHTML = S.simula ? `<button type="button" class="conto-btn simula" data-conto="1" title="Simulazione: ${esc(RUOLI[S.simula])}. Clic per tornare amministratore" aria-label="Simulazione del ruolo ${esc(RUOLI[S.simula])}: torna amministratore">
-      <span class="conto-ini" aria-hidden="true">${esc(ini)}</span><span class="conto-ruolo" aria-hidden="true">${esc(chi.ruolo)}</span><span class="conto-torna">Torna amministratore</span></button>`
+    conto.innerHTML = S.simula ? `<button type="button" class="conto-btn simula" data-conto="1" aria-haspopup="menu" aria-expanded="${!!menuConto}" aria-controls="menuConto" title="Simulazione: ${esc(RUOLI[S.simula])}. Clic per il menu e per tornare amministratore" aria-label="Simulazione del ruolo ${esc(RUOLI[S.simula])}: apri il menu">
+      <span class="conto-ini" aria-hidden="true">${esc(ini)}</span><span class="conto-ruolo" aria-hidden="true">${esc(chi.ruolo)}</span>${FRECCIA}</button>`
       : `<button type="button" class="conto-btn" data-conto="1" aria-haspopup="menu" aria-expanded="${!!menuConto}" aria-controls="menuConto" title="${esc(S.nome ? S.nome + ' – ' + email : email)}" aria-label="Account ${esc(email)}, ${esc(chi.ruolo)}">
       <span class="conto-ini" aria-hidden="true">${esc(ini)}</span><span class="conto-ruolo" aria-hidden="true">${esc(chi.ruolo)}</span>${FRECCIA}</button>`;
     // nella pagina delle carrozzerie scorre con la pagina (che sta sopra a tutto); nel planner resta fermo in alto
@@ -1113,7 +1118,8 @@ const Accesso = (() => {
     menuConto = document.createElement('div'); menuConto.id = 'menuConto'; menuConto.setAttribute('role', 'menu'); menuConto.setAttribute('aria-label', 'Account');
     const email = S.utente.email || '', chi = chiSono();
     // l'amministratore, dentro una carrozzeria, può vedere il planner come gli altri ruoli (le modifiche non si salvano)
-    const vediCome = S.admin && sedeAperta ? `<div class="mc-sez" role="group" aria-label="Vedi il planner come"><span class="mc-tit">Vedi il planner come</span>${Object.entries(RUOLI).map(([k, t]) => `<button type="button" role="menuitem" class="mc-voce mc-ruolo" data-simula="${k}">${esc(t)}</button>`).join('')}<span class="mc-nota">Solo per vedere: le modifiche non si salvano. Clic sull’icona per tornare amministratore.</span></div>` : '';
+    // in simulazione la fascia dell'amministratore sta in cima: «Torna amministratore» e il ruolo da vedere (quello attuale segnato)
+    const vediCome = S.admin && sedeAperta ? `<div class="mc-sez${S.simula ? ' mc-sim' : ''}" role="group" aria-label="${S.simula ? 'Simulazione' : 'Vedi il planner come'}">${S.simula ? `<p class="mc-simtxt">Stai vedendo il planner come <b>${esc(RUOLI[S.simula])}</b>. Le modifiche non si salvano.</p><button type="button" role="menuitem" class="mc-voce mc-torna" data-simula="">${TORNA}Torna amministratore</button>` : ''}<span class="mc-tit">${S.simula ? 'Vedi come un altro ruolo' : 'Vedi il planner come'}</span>${Object.entries(RUOLI).map(([k, t]) => `<button type="button" role="menuitem" class="mc-voce mc-ruolo${k === S.simula ? ' on' : ''}" data-simula="${k}"${k === S.simula ? ' aria-current="true"' : ''}>${esc(t)}${k === S.simula ? '<span class="mc-ora">ora</span>' : ''}</button>`).join('')}${S.simula ? '' : '<span class="mc-nota">Solo per vedere: le modifiche non si salvano.</span>'}</div>` : '';
     menuConto.innerHTML = `<div class="mc-chi" title="${esc(email)}"><span class="conto-ini grande" aria-hidden="true">${esc((S.nome || email).charAt(0).toUpperCase())}</span>
       <div><span class="mc-nasc">Account ${esc(email)}: </span>${S.nome ? `<b class="mc-nome">${esc(S.nome)}</b>` : ''}<b>${esc(chi.ruolo)}</b><span>${esc(chi.dove)}</span></div></div>
       ${vediCome}${sedeAperta && !S.simula ? `<button type="button" role="menuitem" class="mc-voce" data-tabellone="1">${SCHERMO}Apri il tabellone dell’officina</button>` : ''}<button type="button" role="menuitem" class="mc-voce" data-assistenza="1">${AIUTO}Assistenza</button><button type="button" role="menuitem" class="mc-voce" data-conto-esci="1">${ESCI}Esci</button>`;
@@ -1121,7 +1127,7 @@ const Accesso = (() => {
     conto.querySelector('[data-conto]').setAttribute('aria-expanded', 'true');
     menuConto.addEventListener('click', async ev => {
       ev.stopPropagation();
-      const r = ev.target.closest('[data-simula]'); if (r) return simula(r.dataset.simula);
+      const r = ev.target.closest('[data-simula]'); if (r) { if (r.dataset.simula === S.simula) return chiudiMenuConto(true); return simula(r.dataset.simula); }
       // il tabellone si apre in una scheda nuova, da portare a tutto schermo (F11) sullo schermo dell'officina
       if (ev.target.closest('[data-assistenza]')) { chiudiMenuConto(false); return apriAssistenza(); }
       if (ev.target.closest('[data-tabellone]')) { chiudiMenuConto(false); window.open(location.pathname + location.search + '#c=' + sedeAperta.id + '&tabellone=1', '_blank', 'noopener'); return; }
