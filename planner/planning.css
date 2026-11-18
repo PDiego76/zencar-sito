@@ -1547,3 +1547,17 @@ input[type=checkbox].sw:focus-visible{outline:2px solid var(--tape-chiaro);outli
 .pweek.due .sinlav{font-size:12px;white-space:normal;text-align:center;line-height:1.3}
 .pweek.due .pwesito{font-size:12px}
 .pweek.due .pwdata{font-size:18px;white-space:nowrap}
+/* ===== Polish (2026-11-18, impeccable) =====
+   Parcheggio: i giorni sono zone tonali bianche sulla fascia grigia, senza bordo (niente riquadri nel riquadro);
+   oggi con il bordo arancione di 2 px, il passaggio del mouse e la scelta con un contorno interno */
+.pwday{border:0}
+.pwday.today{outline:2px solid var(--tape-chiaro);outline-offset:-2px}
+.pwday.selectable:hover{background:var(--tape-soft);box-shadow:inset 0 0 0 1.5px var(--tape-chiaro)}
+.pwday.off.pass{background:transparent;border:0}
+.pwday.off:not(.pass){border:1.5px dashed var(--grid-strong);background:transparent}
+.pwday.dropt{border:2px dashed var(--tape-chiaro);padding:12px 8px}
+/* controlli sotto i 32 px: scelta 1/2 settimane, giorni del mese compatto, quote in Calcolo delle ore, ore tecniche */
+.pwseg button{height:32px}
+.mgrid.comp .mday{min-height:34px}
+.sf.sm{height:32px}.sf.sm input[type=number]{height:30px}
+.cv-h input{height:32px}
