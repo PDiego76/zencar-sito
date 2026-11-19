@@ -246,8 +246,9 @@ const Accesso = (() => {
   function laterale(gone, attiva = '') {
     const email = S.utente.email || '', chi = chiSono(), b = [];
     // il Gestore (proposta I, 2026-11-12): prima voce del menu, più grande e su una fascia chiara; le carrozzerie restano in primo piano
+    // dal 2026-11-19 (proposta C) è una scheda con sottotitolo e l'icona su una tessera arancione, per farlo notare di più
     if (attiva === 'gestore') b.push(`<button type="button" class="lstr" data-gs-chiudi="1">${ICONA.carrozzerie}<span class="lstr-t">Le tue carrozzerie</span></button>`);
-    const gestore = vedeGestore() ? `<button type="button" class="lges${attiva === 'gestore' ? ' on' : ''}" data-gestore="1"${attiva === 'gestore' ? ' aria-current="page"' : ''}>${ICONA.gestore}<b>Gestore</b>
+    const gestore = vedeGestore() ? `<button type="button" class="lges${attiva === 'gestore' ? ' on' : ''}" data-gestore="1"${attiva === 'gestore' ? ' aria-current="page"' : ''}>${ICONA.gestore}<span class="lges-t"><b>Gestore</b><small>Tutte le carrozzerie</small></span>
       <svg class="lges-f" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>` : '';
     if (sediMie().length) b.push(`<button type="button" class="lstr" data-persone="1">${ICONA.persone}<span class="lstr-t">Persone</span></button>`);
     if (gone.length) b.push(`<button type="button" class="lstr" data-eliminate="1" aria-expanded="${!!S.eliminate}">${ICONA.cestino}<span class="lstr-t">Carrozzerie eliminate (${gone.length})</span></button>`);
