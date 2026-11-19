@@ -1052,7 +1052,7 @@ const Accesso = (() => {
       <div class="db"><section class="as-man" aria-labelledby="asMan"><div><h4 id="asMan">Prima di scrivere</h4><p>Il manuale spiega ogni pagina passo per passo, con le domande frequenti in fondo.</p></div>
         <button type="button" class="btn" data-as-manuale="1">Scarica il manuale (PDF)</button></section>
       <form class="as-form" id="asForm" novalidate><h4>Scrivi all’assistenza</h4>
-        <fieldset class="as-arg"><legend>Di cosa si tratta</legend>${Object.entries(ARGOMENTI).map(([k, t], i) => `<label><input type="radio" name="argomento" value="${k}"${i === 0 ? ' checked' : ''}><span>${t}</span></label>`).join('')}</fieldset>
+        <fieldset class="as-arg"><legend>Di cosa si tratta</legend>${Object.entries(ARGOMENTI).map(([k, t], i) => `<label><input type="radio" name="argomento" value="${k}"${i === 0 ? ' checked' : ''}><span data-t="${t}">${t}</span></label>`).join('')}</fieldset>
         <div class="as-due">${sede}<label class="as-campo"><span>Telefono per richiamarti <span class="p-fac">(facoltativo)</span></span><input type="tel" name="telefono" maxlength="40" autocomplete="tel"></label></div>
         <label class="as-campo">Messaggio<textarea name="messaggio" rows="6" maxlength="3000" required placeholder="Cosa stavi facendo, cosa ti aspettavi e cosa è successo. Se riguarda una vettura, scrivi la targa."></textarea></label>
         <p class="lnote">Ti rispondiamo per email. Con il messaggio inviamo anche carrozzeria, ruolo, browser e dimensione dello schermo.<br>Puoi scrivere anche direttamente a <a class="as-mail" href="mailto:assistenza@zencar.it">assistenza@zencar.it</a>.</p>
