@@ -1596,3 +1596,17 @@ input[type=checkbox]:not(.sw):hover{border-color:var(--ink)}
    quadrata senza spunta visibile; acceso in blu notte come gli altri interruttori */
 .cv-sw input[type=checkbox]{width:34px;height:20px;border:0;border-radius:999px;background:var(--line)}
 .cv-sw input[type=checkbox]:checked{background:var(--navy);border:0}
+
+/* Vetture ferme (2026-11-23, proposta C scelta dal titolare): stand-by e lavorazioni esterne in un gruppo in cima all’elenco,
+   righe a strisce; filo e scritta rossi se non sarà pronta per la consegna, arancioni se è al limite */
+.vtab tr.vgr td{background:var(--surface);padding:14px 10px 6px;border-bottom:2px solid var(--line);white-space:normal;cursor:default}
+.vgrt{position:sticky;left:10px;display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 10px;max-width:calc(100vw - 72px);font:700 13px var(--f);color:var(--ink)}
+.vgrt>span{font-weight:500;color:var(--muted)}
+.vgrt .al{color:#fff;background:var(--bad);border-radius:999px;padding:2px 10px;font:700 12px var(--f)}
+.vtab tbody tr.ferma,.vtab tbody tr.ferma:hover{background:repeating-linear-gradient(135deg,#e2e6e9 0 7px,#d3d8dc 7px 14px);color:var(--standby-ink)}
+.vtab tr.ferma.bad td:first-child{box-shadow:inset 4px 0 0 var(--bad)}.vtab tr.ferma.warn td:first-child{box-shadow:inset 4px 0 0 var(--warn)}
+.vferma{display:block;max-width:170px;white-space:normal;font:700 12px var(--f);color:var(--standby-ink)}.vferma.bad{color:var(--bad)}.vferma.warn{color:var(--warn)}
+.vtgr{padding:12px 16px 6px;background:var(--surface);border-top:1px solid var(--line);border-bottom:2px solid var(--line)}
+.vtb.ferma{background:repeating-linear-gradient(135deg,#e2e6e9 0 7px,#d3d8dc 7px 14px);opacity:1}.vtb.ferma i{opacity:0}
+.vtr.ferma.bad{box-shadow:inset 4px 0 0 var(--bad)}.vtr.ferma.warn{box-shadow:inset 4px 0 0 var(--warn)}
+.vtt.fbad{color:var(--bad);font-weight:700}.vtt.fwarn{color:var(--warn);font-weight:700}
