@@ -1610,3 +1610,9 @@ input[type=checkbox]:not(.sw):hover{border-color:var(--ink)}
 .vtb.ferma{background:repeating-linear-gradient(135deg,#e2e6e9 0 7px,#d3d8dc 7px 14px);opacity:1}.vtb.ferma i{opacity:0}
 .vtr.ferma.bad{box-shadow:inset 4px 0 0 var(--bad)}.vtr.ferma.warn{box-shadow:inset 4px 0 0 var(--warn)}
 .vtt.fbad{color:var(--bad);font-weight:700}.vtt.fwarn{color:var(--warn);font-weight:700}
+
+/* Completate – in attesa conferma (2026-11-24, chiesto dal titolare): schede tutte larghe uguali, allineate in colonna;
+   il modello lungo si taglia con i puntini (intero al passaggio del mouse) e i pulsanti restano a destra */
+.sbbar .job.autocar{width:432px;max-width:100%}
+.sbbar .job.autocar .acmod{flex:1 1 auto!important}
+@media (max-width:520px){.sbbar .job.autocar{width:100%;flex-wrap:wrap}.sbbar .job.autocar .acmod{flex-basis:calc(100% - 160px)!important}}
