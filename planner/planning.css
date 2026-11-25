@@ -1616,3 +1616,12 @@ input[type=checkbox]:not(.sw):hover{border-color:var(--ink)}
 .sbbar .job.autocar{width:432px;max-width:100%}
 .sbbar .job.autocar .acmod{flex:1 1 auto!important}
 @media (max-width:520px){.sbbar .job.autocar{width:100%;flex-wrap:wrap}.sbbar .job.autocar .acmod{flex-basis:calc(100% - 160px)!important}}
+
+/* Targhe mai spezzate su due righe (2026-11-25, chiesto dal titolare). Nella vista «Eccezioni a lato» la targa è scritta
+   senza spazi e, se la colonna del giorno è stretta, il carattere si riduce con la larghezza della lavorazione (fino a 11px,
+   eccezione voluta al minimo di 12px: la targa intera su una riga conta di più) */
+.plate,.plate b,.jt b,.job b{white-space:nowrap}
+.calv-c .job{container-type:inline-size}
+.calv-c .job .jt b{font-size:max(11px,min(1em,calc((100cqi - 40px) / 4.6)))}
+.week.calv-c .job.line{grid-template-columns:12px max-content minmax(0,1fr) auto;gap:6px;padding:0 7px}
+.week.calv-c .job.line > b{font-size:max(11px,min(12.5px,calc((100cqi - 80px) / 4.6)))}
